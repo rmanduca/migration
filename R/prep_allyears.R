@@ -36,10 +36,12 @@ cents = cents[,c("msa","INTPTLAT","INTPTLON")]
 cents = rename.vars(cents, from = c("INTPTLAT","INTPTLON"),to = c("lat","lon"))
 
 ## Migration Data ##
-#Inflow vs outflow should be equivalent? Except for sums at top
-##CHECK THIS AGAIN
+#Inflow vs outflow appear equivalent except for sums at top of each entry and 60-80 records in only one of the two files
+
+for(yr in c('0405','0506','0607','0708','0809','0910')){
+	
 #Inflow - primary data
-migr = read.csv("data/irs/countyinflow0910.csv")
+migr = read.csv(paste("data/irs/countyinflow",yr,".csv",sep = ''))
 migr$sto = as.character(migr$State_Code_Origin)
 migr[nchar(migr$sto)==1,"sto"] = paste("0",migr[nchar(migr$sto)==1,"sto"],sep ="")
 
@@ -59,12 +61,17 @@ migr$cntyd = paste(migr$std,migr$cnd,sep="")
 stopifnot(nchar(migr$cntyo)==5)
 stopifnot(nchar(migr$cntyd)==5)
 
-#Outflow - for Node Stats 
-omigr = read.csv('data/irs/countyoutflow0910.csv')
+#Outflow - for Node Stats and confirmation
+omigr = read.csv(paste('data/irs/countyoutflow',yr,'.csv',sep = ''))
 check = merge(migr,omigr, by = c("State_Code_Origin",'State_Code_Dest','County_Code_Origin','County_Code_Dest'))
 stopifnot(check$Return_Num.x == check$Return_Num.y)
 
+check2 = merge(migr,omigr, by = c("State_Code_Origin",'State_Code_Dest','County_Code_Origin','County_Code_Dest'), all = T)
+innotout = check2[is.na(check2$Return_Num.y) & check2$State_Code_Origin <57,]
+outnotin = check2[is.na(check2$Return_Num.x) & check2$State_Code_Dest <57,]
 
+write.csv(innotout,paste('output/innotout',yr,'.csv',sep = ''), row.names= FALSE) 
+write.csv(outnotin,paste('output/outnotin',yr,'.csv',sep = ''), row.names= FALSE) 
 
 #### Merge and Aggregate Data ####
 
@@ -73,11 +80,11 @@ stopifnot(check$Return_Num.x == check$Return_Num.y)
 ccmigr = merge(migr,ctomsa,by.x = "cntyo",by.y = "cnty", all.x = TRUE)
 ccmigr = merge(ccmigr,ctomsa,by.x = "cntyd",by.y = "cnty", all.x = TRUE)
 ccmigr = rename.vars(ccmigr,from = c("msa.x","msa.y"),to = c("msao","msad"))
-stopifnot(dim(ccmigr)[1]==110651)
+#stopifnot(dim(ccmigr)[1]==110651)
 
 #Limit to MSA to MSA
 mmmigr = ccmigr[!is.na(ccmigr$msao) & !is.na(ccmigr$msad),]
-stopifnot(dim(mmmigr)[1]==68831)
+#stopifnot(dim(mmmigr)[1]==68831)
 
 #Collapse into MSA-MSA flows
 m2m = aggregate(mmmigr[,c('Exmpt_Num','Return_Num','Aggr_AGI')],list(mmmigr$msao,mmmigr$msad),FUN = "sum")
@@ -85,7 +92,7 @@ m2m = rename.vars(m2m,from = c("Group.1","Group.2"),to = c("source","target"))
 m2m = m2m[m2m$source != m2m$target,]
 
 #Export
-write.csv(m2m,'output/m2m.csv', row.names= FALSE)
+write.csv(m2m,paste('output/m2m',yr,'.csv',sep = ''), row.names= FALSE)
 
 #Add both directions; only count once
 #Merge on other direction
@@ -106,8 +113,9 @@ mcol[is.na(mcol)]=0
 mcol$exmptgross = apply(mcol[,c('exmpt_st','exmpt_ts')],1,FUN=min)
 
 #Export
-write.csv(mcol,'output/grossm.csv',row.names = FALSE)
-write.csv(mcol[mcol$exmptgross > 0,],'output/grossm_abridged.csv',row.names=F)
+write.csv(mcol,paste('output/grossm',yr,'.csv',sep = ''),row.names = FALSE)
+write.csv(mcol[mcol$exmptgross > 0,],paste('output/grossm_abridged',yr,'.csv',sep = ''),row.names=F)
+} #End year loop
 
 ## Nodes ##
 #For now just merge on lat/long to population
@@ -128,8 +136,3 @@ popmsa = merge(popmsa,cents,by.x = "id", by.y = 'msa', all = FALSE)
 #Export
 write.csv(popmsa,'output/msadata.csv',row.names=FALSE)
 
-
-
-
-
-#Forget if i've done this before, but to get to one set of ins and outs first merge based on the reversed od. Then create new colums for the alphabetical first and second of the origin/destination. Then collapse using both min and max on those unordered names, and make sure that the numbers are the same. Then done
