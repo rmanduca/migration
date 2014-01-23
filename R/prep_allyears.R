@@ -86,6 +86,11 @@ ccmigr = rename.vars(ccmigr,from = c("msa.x","msa.y"),to = c("msao","msad"))
 mmmigr = ccmigr[!is.na(ccmigr$msao) & !is.na(ccmigr$msad),]
 #stopifnot(dim(mmmigr)[1]==68831)
 
+#County-MSA flows
+ccmigr[is.na(ccmigr$msao),'msao'] = ccmigr[is.na(ccmigr$msao),'cntyo']
+ccmigr[is.na(ccmigr$msad),'msad'] = ccmigr[is.na(ccmigr$msad),'cntyd']
+
+
 #Collapse into MSA-MSA flows
 m2m = aggregate(mmmigr[,c('Exmpt_Num','Return_Num','Aggr_AGI')],list(mmmigr$msao,mmmigr$msad),FUN = "sum")
 m2m = rename.vars(m2m,from = c("Group.1","Group.2"),to = c("source","target"))
