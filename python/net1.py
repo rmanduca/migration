@@ -4,6 +4,7 @@ Program to try out importing data and running some stats in network X
 import os
 import networkx as nx
 import pandas as pd
+import matplotlib.pyplot as plt
 
 '''
 import numpy as np
@@ -14,9 +15,80 @@ import json
 '''
 os.chdir("/Users/Eyota/projects/thesis")
 
+#Import nodes and data
+metros = pd.io.parsers.read_csv("output/msadata.csv")
+metros = metros.set_index('id')
+
+#Put attributes into dictionary form
+
+
+#For fun, generalize!
+def df2rowdict(df, columns):
+    dictlist = []
+    for i in range(df.shape[0]):
+        dictlist.append(makedict(df, df.index[i], columns))
+    return dictlist
+
+def makedict(df,row, names):
+    return {k: df.loc[row][k] for k in names}
+
+colsOfInterest = ['MSAName','lat','lon','pop']
+
+nodedata2 = zip(metros.index,df2rowdict(metros,colsOfInterest))
+
+    
+#make graph and add nodes
+mg = nx.Graph()
+mg.add_nodes_from(nodedata)
+    
+'''
+doesn't allow for skipping variables
+def makedict(row, names):
+    return {names[k]: row[k] for k in range(len(names))}
+'''
+
+
+
+#Import network edges 
+#To add lots of data, have to have a dictionary for each row
 gm = pd.io.parsers.read_csv("output/grossm_abridged0910.csv")
-gmsub = gm[['source','target','exmptgross']]
+
+gm.set_index(['source','target'],inplace = True)
+
+#Index by source,target
+nidx = pd.MultiIndex.from_arrays([gm['source'],gm['target']], names = ['source','target'])
+gm = gm.set_index(nidx)
+
+#Compute gross returns and gross agi
+gm['agigross'] = gm[['aggragi_st','aggragi_ts']].apply(min, axis = 1)
+gm['retgross'] = gm[['return_st','return_ts']].apply(min, axis = 1)
+
+#Make dictionary of wanted columns
+edgeColsofInt = ['exmptgross','agigross','retgross']
+
+idx = gm.index
+edgedata = zip(zip(*gm.index)[0],zip(*gm.index)[1], df2rowdict(gm,edgeColsofInt))
+
+mg.add_edges_from(edgedata)
+
+
+
+
+
+#Not sure how to add the data using the add_edges_from command, so going to add it manually
+#NBD, but annoying :-/
+
+#Add edges
+gmsub = gm[['source','target']]
 gmtuples = [tuple(x) for x in gmsub.values]
+mg.add_edges_from(gmtuples)
+
+
+
+index = pd.MultiIndex.from_arrays([gm['source'],gm['target']], names = ['source','target'])
+ngm = gm.set_index(index)
+gm.in
+
 
 t = nx.Graph()
 t.add_weighted_edges_from(gmtuples)
