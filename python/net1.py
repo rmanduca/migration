@@ -19,9 +19,10 @@ os.chdir("/Users/Eyota/projects/thesis")
 metros = pd.io.parsers.read_csv("output/msadata.csv")
 metros = metros.set_index('id')
 
+metros['plat'] = metros['lat'] - 3000
+metros['plon'] = -metros['lon'] + 7500
+
 #Put attributes into dictionary form
-
-
 #For fun, generalize!
 def df2rowdict(df, columns):
     dictlist = []
@@ -34,7 +35,7 @@ def makedict(df,row, names):
 
 colsOfInterest = ['MSAName','lat','lon','pop']
 
-nodedata2 = zip(metros.index,df2rowdict(metros,colsOfInterest))
+nodedata = zip(metros.index,df2rowdict(metros,colsOfInterest))
 
     
 #make graph and add nodes
@@ -55,10 +56,6 @@ gm = pd.io.parsers.read_csv("output/grossm_abridged0910.csv")
 
 gm.set_index(['source','target'],inplace = True)
 
-#Index by source,target
-nidx = pd.MultiIndex.from_arrays([gm['source'],gm['target']], names = ['source','target'])
-gm = gm.set_index(nidx)
-
 #Compute gross returns and gross agi
 gm['agigross'] = gm[['aggragi_st','aggragi_ts']].apply(min, axis = 1)
 gm['retgross'] = gm[['return_st','return_ts']].apply(min, axis = 1)
@@ -66,13 +63,28 @@ gm['retgross'] = gm[['return_st','return_ts']].apply(min, axis = 1)
 #Make dictionary of wanted columns
 edgeColsofInt = ['exmptgross','agigross','retgross']
 
-idx = gm.index
+#have to make it a three-tuple: first node, second node, dictionary with attributes
 edgedata = zip(zip(*gm.index)[0],zip(*gm.index)[1], df2rowdict(gm,edgeColsofInt))
 
 mg.add_edges_from(edgedata)
 
 
 
+#Try drawing the network!
+
+lats = nx.get_node_attributes(mg, 'plat')
+lons = nx.get_node_attributes(mg, 'plon')
+ll = zip(lats.values(), lons.values())
+pos = dict(zip(lats.keys(), ll))
+
+pos = dict(zip(metros.index,zip(metros['lon'],metros['lat'])))
+
+plt.figure(figsize = (8,4))
+nx.draw(mg, pos = pos, with_labels = False, nodelist = list(metros.index), node_size = metros['pop'] / 50000, alpha = .4, linewidths = 0, width = .1)
+plt.xlim = (-165,-65)
+plt.ylim = (15,65)
+
+plt.savefig("output/firstdraw.jpeg")
 
 
 #Not sure how to add the data using the add_edges_from command, so going to add it manually
@@ -124,7 +136,9 @@ nodes.describe()
 
 
 
-
+#Index by source,target
+nidx = pd.MultiIndex.from_arrays([gm['source'],gm['target']], names = ['source','target'])
+gm = gm.set_index(nidx)
 
 
 
