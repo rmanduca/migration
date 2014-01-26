@@ -7,10 +7,10 @@ import networkx as nx
 def netplot(path, graph, posdict, **args):
     
 
-    plt.figure(figsize = (8,4))
+    plt.figure(figsize = (15,11))
     nx.draw(graph, pos = posdict, **args)
-    plt.xlim = (-165,-65)
-    plt.ylim = (15,65)
+    plt.axis([-2300000,2100000, -1800000, 1500000])
+
 
     plt.savefig(path)
 

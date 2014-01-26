@@ -2,9 +2,16 @@
 Program to try out importing data and running some stats in network X
 """
 import os
+import sys
 import networkx as nx
 import pandas as pd
 import matplotlib.pyplot as plt
+
+#New Modules
+sys.path.append('/Users/Eyota/projects/thesis/code/python/modules')
+from rowtodict import df2rowdict, makedict
+
+os.chdir("/Users/Eyota/projects/thesis")
 
 '''
 import numpy as np
@@ -13,7 +20,6 @@ from urllib2 import urlopen
 import time
 import json
 '''
-os.chdir("/Users/Eyota/projects/thesis")
 
 #Import nodes and data
 metros = pd.io.parsers.read_csv("output/msadata.csv")
@@ -22,16 +28,6 @@ metros = metros.set_index('id')
 metros['plat'] = metros['lat'] - 3000
 metros['plon'] = -metros['lon'] + 7500
 
-#Put attributes into dictionary form
-#For fun, generalize!
-def df2rowdict(df, columns):
-    dictlist = []
-    for i in range(df.shape[0]):
-        dictlist.append(makedict(df, df.index[i], columns))
-    return dictlist
-
-def makedict(df,row, names):
-    return {k: df.loc[row][k] for k in names}
 
 colsOfInterest = ['MSAName','lat','lon','pop']
 
