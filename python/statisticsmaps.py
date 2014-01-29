@@ -71,12 +71,37 @@ pos = dict(zip(statsdraw.index,zip(t[0],t[1])))
 
 
 #Loop through statistics
-for stat in ['degree','wdegree','closeness','flowcloseness','btwnness','curbtwn']:
+for stat in ['degree','wdegree','closeness','flowcloseness','btwnness','flowbtwnness']:
     netplot('output/maps_%s.jpeg' %stat,mgdraw, pos, with_labels = False, 
     nodelist = list(statsdraw.sort(['pop']).index), 
     node_size = sqrt(statsdraw.sort(['pop'])['pop']), 
     node_color = statsdraw.sort(['pop'])[stat],
     alpha = .7, linewidths = 0.5, width = 0)
+
+
+
+
+#Plot statistics vs each other
+plt.plot(stats['pop'],stats['wdegree'], 'bo')
+
+plt.figure()
+plt.plot(log(stats['pop']),stats['flowcloseness'], 'bo')
+
+plt.figure()
+plt.plot(log(stats['wdegree']),stats['flowcloseness'], 'bo')
+
+plt.figure()
+plt.plot(stats['pop'],stats['flowbtwnness'], 'bo')
+
+plt.figure()
+plt.plot(log(stats['pop']),log(stats['flowbtwnness']), 'bo')
+
+plt.figure()
+plt.plot(stats['flowcloseness'],log(stats['flowbtwnness']), 'bo')
+plt.axis([0,600,-15,0])
+
+plt.figure()
+plt.plot(log(stats['wdegree']),log(stats['flowbtwnness']), 'bo')
 
 
 
