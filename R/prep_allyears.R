@@ -84,6 +84,7 @@ ccmigr = rename.vars(ccmigr,from = c("msa.x","msa.y"),to = c("msao","msad"))
 
 #Limit to MSA to MSA
 mmmigr = ccmigr[!is.na(ccmigr$msao) & !is.na(ccmigr$msad),]
+stopifnot(mmmigr$Return_Num >=0)
 #stopifnot(dim(mmmigr)[1]==68831)
 
 #County-MSA flows
