@@ -5,6 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import pyproj
 import random as rd
+import pylab as pl
 #import community as cm
 
 #New Modules
@@ -27,7 +28,7 @@ partition = cm.generate_dendogram(mgdraw)
 coms = dict2column(coms, partition,'com')
 '''
 
-#Take out AK/HI for now
+#Take out AK/HI for now for drawing
 akhi = metros[(metros['lon'] > -60) | (metros['lon'] <-125)].index
 mgdraw = mg.copy()
 mgdraw.remove_nodes_from(akhi)
@@ -50,16 +51,59 @@ nx.draw(mgdraw, pos,with_labels = False,alpha = 1, linewidths = 0.5, width = 0,
 
 '''
 
+comnet = nx.Graph()
+comnet.add_nodes_from(nodedata)
 
+comsdraw = coms[(metros['lon'] < -60) & (metros['lon'] >-125)]
+comlist = []
 for i in range(10):
     partition = cm.best_partition(mg)
     #I think it's ok to use the full network including AKHI
     comsdraw = dict2column(comsdraw, partition,'com%s'%i)
     #'part%s' %i)
-    netplot('output/maps_com_%s.jpeg'%i,mgdraw,pos,with_labels = False,alpha = 1, linewidths = 0.5, width = 0,
+    netplot('output/commaps/maps_com_%s.jpeg'%i,mgdraw,pos,with_labels = False,alpha = 1, linewidths = 0.5, width = 0,
         nodelist = list(comsdraw.sort(['pop']).index),
         node_size = sqrt(comsdraw.sort(['pop'])['pop']),
         node_color = comsdraw.sort(['pop'])['com%s'%i])
+        
+    for n in mg.nodes():
+        for m in mg.nodes(): #[find(mg.nodes() == n):len(mg.nodes())]:
+            if m == n:
+                continue
+            else:
+                if partition[m] == partition[n]:
+                    #comnet.add_edge(m,n)
+                    comlist.append((m,n))
+        
+comdf = pd.DataFrame.from_records(comlist)
+comdf['cnt'] = 1
+comcol = comdf.groupby([0,1]).agg(sum)
+comedges = zip(zip(*comcol.index)[0],zip(*comcol.index)[1],comcol['cnt'])
 
-                                
+comnet.add_weighted_edges_from(comedges)
+comnetdraw = comnet
+comnetdraw.remove_nodes_from(akhi)
+
+elist = [(u,v) for (u,v,d) in comnet.edges(data = True) if d['weight']==10]
+
+#Plot groups that are always in the same network
+netplot('output/communities_10.jpg',comnetdraw,pos,with_labels = False,alpha = .1, linewidths = 0, 
+        nodelist = list(comsdraw.sort(['pop']).index),
+        node_size = sqrt(comsdraw.sort(['pop'])['pop']),
+        node_color = 'gray',
+        edgelist = elist
+        )        
+                
+elist_all = [(u,v) for (u,v,d) in comnet.edges(data = True)]
+ecol = [d['weight'] for (u,v,d) in comnet.edges(data = True)]
+
+#Plot with weights that depend on number of overlapping communities
+ netplot('output/communities_10.jpg',comnetdraw,pos,with_labels = False,alpha = .1, linewidths = 0, 
+        nodelist = list(comsdraw.sort(['pop']).index),
+        node_size = sqrt(comsdraw.sort(['pop'])['pop']),
+        node_color = 'gray',
+        edgelist = elist_all,
+        edge_cmap = pl.cm.Greys
+        )   
+ 
 #nx.draw(mgdraw, pos,with_labels = False,alpha = .7, linewidths = 0.5, width = 0)
