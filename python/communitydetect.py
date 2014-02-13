@@ -78,6 +78,7 @@ for i in range(10):
 comdf = pd.DataFrame.from_records(comlist)
 comdf['cnt'] = 1
 comcol = comdf.groupby([0,1]).agg(sum)
+comcol = comcol.sort(['cnt'])
 comedges = zip(zip(*comcol.index)[0],zip(*comcol.index)[1],comcol['cnt'])
 
 comnet.add_weighted_edges_from(comedges)
@@ -94,16 +95,35 @@ netplot('output/communities_10.jpg',comnetdraw,pos,with_labels = False,alpha = .
         edgelist = elist
         )        
                 
-elist_all = [(u,v) for (u,v,d) in comnet.edges(data = True)]
-ecol = [d['weight'] for (u,v,d) in comnet.edges(data = True)]
+elist_all = zip(zip(*comcol.index)[0],zip(*comcol.index)[1])
+#[(u,v) for (u,v,d) in comnet.edges(data = True)]
+ecol = comcol['cnt']**2
+#.apply(^2, axis = 1
+#[d['weight'] for (u,v,d) in comnet.edges(data = True)]
 
 #Plot with weights that depend on number of overlapping communities
- netplot('output/communities_10.jpg',comnetdraw,pos,with_labels = False,alpha = .1, linewidths = 0, 
+netplot('output/communities_10_squared.jpg',comnetdraw,pos,with_labels = False,alpha = .1, linewidths = 0, 
         nodelist = list(comsdraw.sort(['pop']).index),
         node_size = sqrt(comsdraw.sort(['pop'])['pop']),
         node_color = 'gray',
         edgelist = elist_all,
+        edge_color = ecol,
         edge_cmap = pl.cm.Greys
         )   
  
+ 
+ecol = comcol['cnt']
+#.apply(^2, axis = 1
+#[d['weight'] for (u,v,d) in comnet.edges(data = True)]
+
+#Plot with weights that depend on number of overlapping communities
+netplot('output/communities_10_lin.jpg',comnetdraw,pos,with_labels = False,alpha = .1, linewidths = 0, 
+        nodelist = list(comsdraw.sort(['pop']).index),
+        node_size = sqrt(comsdraw.sort(['pop'])['pop']),
+        node_color = 'gray',
+        edgelist = elist_all,
+        edge_color = ecol,
+        edge_cmap = pl.cm.Greys
+        )   
+  
 #nx.draw(mgdraw, pos,with_labels = False,alpha = .7, linewidths = 0.5, width = 0)
