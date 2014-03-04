@@ -12,13 +12,14 @@ import pylab as pl
 sys.path.append('/Users/Eyota/projects/thesis/code/python/modules')
 from rowtodict import *
 from drawnetworks import netplot
+from importnetworks import importnetwork
 import com2 as cm
 
 os.chdir("/Users/Eyota/projects/thesis")
 
 year = '0910'
 
-execfile('code/python/importnetworks.py')
+importnetwork(year)
 
 coms = metros
 
@@ -56,12 +57,12 @@ comnet.add_nodes_from(nodedata)
 
 comsdraw = coms[(metros['lon'] < -60) & (metros['lon'] >-125)]
 comlist = []
-for i in range(10):
+for i in range(100):
     partition = cm.best_partition(mg)
     #I think it's ok to use the full network including AKHI
     comsdraw = dict2column(comsdraw, partition,'com%s'%i)
     #'part%s' %i)
-    netplot('output/commaps/maps_com_%s.jpeg'%i,mgdraw,pos,with_labels = False,alpha = 1, linewidths = 0.5, width = 0,
+    netplot('output/commaps/maps_com_%s_%s.jpeg'%(i,year),mgdraw,pos,with_labels = False,alpha = 1, linewidths = 0.5, width = 0,
         nodelist = list(comsdraw.sort(['pop']).index),
         node_size = sqrt(comsdraw.sort(['pop'])['pop']),
         node_color = comsdraw.sort(['pop'])['com%s'%i])
@@ -85,16 +86,18 @@ comnet.add_weighted_edges_from(comedges)
 comnetdraw = comnet
 comnetdraw.remove_nodes_from(akhi)
 
-elist = [(u,v) for (u,v,d) in comnet.edges(data = True) if d['weight']==10]
+elist = [(u,v) for (u,v,d) in comnet.edges(data = True) if d['weight'] >=95]
 
 #Plot groups that are always in the same network
-netplot('output/communities_10.jpg',comnetdraw,pos,with_labels = False,alpha = .1, linewidths = 0, 
+netplot('output/communities_95_%s.jpg' %year,comnetdraw,pos,with_labels = False,alpha = .1, linewidths = 0, 
         nodelist = list(comsdraw.sort(['pop']).index),
         node_size = sqrt(comsdraw.sort(['pop'])['pop']),
         node_color = 'gray',
         edgelist = elist
         )        
                 
+                
+#Squared
 elist_all = zip(zip(*comcol.index)[0],zip(*comcol.index)[1])
 #[(u,v) for (u,v,d) in comnet.edges(data = True)]
 ecol = comcol['cnt']**2
@@ -102,7 +105,7 @@ ecol = comcol['cnt']**2
 #[d['weight'] for (u,v,d) in comnet.edges(data = True)]
 
 #Plot with weights that depend on number of overlapping communities
-netplot('output/communities_10_squared.jpg',comnetdraw,pos,with_labels = False,alpha = .1, linewidths = 0, 
+netplot('output/communities_10_squared_100_%s.jpg' %year,comnetdraw,pos,with_labels = False,alpha = 0.1, linewidths = 0, 
         nodelist = list(comsdraw.sort(['pop']).index),
         node_size = sqrt(comsdraw.sort(['pop'])['pop']),
         node_color = 'gray',
@@ -111,13 +114,14 @@ netplot('output/communities_10_squared.jpg',comnetdraw,pos,with_labels = False,a
         edge_cmap = pl.cm.Greys
         )   
  
- 
+
+# Linear
 ecol = comcol['cnt']
 #.apply(^2, axis = 1
 #[d['weight'] for (u,v,d) in comnet.edges(data = True)]
 
 #Plot with weights that depend on number of overlapping communities
-netplot('output/communities_10_lin.jpg',comnetdraw,pos,with_labels = False,alpha = .1, linewidths = 0, 
+netplot('output/communities_10_lin_100_%s.jpg' %year,comnetdraw,pos,with_labels = False,alpha = 0.1, linewidths = 0, 
         nodelist = list(comsdraw.sort(['pop']).index),
         node_size = sqrt(comsdraw.sort(['pop'])['pop']),
         node_color = 'gray',

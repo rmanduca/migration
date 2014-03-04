@@ -9,17 +9,22 @@ import networkx as nx
 import pandas as pd
 import matplotlib.pyplot as plt
 import pyproj
+import mpl_toolkits.basemap as bm
 
 #New Modules
 sys.path.append('/Users/Eyota/projects/thesis/code/python/modules')
 from rowtodict import *
 from drawnetworks import netplot
+import weighted_eigenvector as we
+from importnetworks import importnetwork
 
 os.chdir("/Users/Eyota/projects/thesis")
 
 year = '0910'
+width = 4600000
+height = 3100000
 
-execfile('code/python/importnetworks.py')
+metros, mg = importnetwork(year)
 
 #Compute statistics
 stats = metros
@@ -48,8 +53,13 @@ stats = dict2column(stats, btwnness, 'btwnness')
 flowbtwnness = nx.current_flow_betweenness_centrality(mg, weight = 'exmptgross')
 stats = dict2column(stats, flowbtwnness, 'flowbtwnness')
 
+#Eigenvector Centrality
+eigenvc = nx.eigenvector_centrality(mg)
+stats = dict2column(stats, eigenvc, 'eigenvc')
 
-
+#Weighted Eigenvector Centrality
+weigenvc = we.eigenvector_centrality(mg, weight = 'exmptgross')
+stats = dict2column(stats, weigenvc, 'weigenvc')
 
 
 
@@ -64,15 +74,15 @@ mgdraw = mg.copy()
 mgdraw.remove_nodes_from(akhi)
 
 #Play with projections
-project = pyproj.Proj('+proj=aea +lat_1=20 +lat_2=60 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs')
+project = pyproj.Proj('+proj=aea +lat_1=20 +lat_2=60 +lat_0=38.5 +lon_0=-97 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs')
 
 t = project(statsdraw['lon'],statsdraw['lat'])
-pos = dict(zip(statsdraw.index,zip(t[0],t[1])))
+pos = dict(zip(statsdraw.index,zip(t[0]+width / 2,t[1] + height / 2)))
 
 
 #Loop through statistics
 for stat in ['degree','wdegree','closeness','flowcloseness','btwnness','flowbtwnness']:
-    netplot('output/maps_%s.jpeg' %stat,mgdraw, pos, with_labels = False, 
+    netplot('output/maps_%s.jpeg' %stat,width, height,mgdraw, pos, with_labels = False, 
     nodelist = list(statsdraw.sort(['pop']).index), 
     node_size = sqrt(statsdraw.sort(['pop'])['pop']), 
     node_color = statsdraw.sort(['pop'])[stat],
@@ -99,6 +109,13 @@ plt.plot(log(stats['pop']),log(stats['flowbtwnness']), 'bo')
 plt.figure()
 plt.plot(stats['flowcloseness'],log(stats['flowbtwnness']), 'bo')
 plt.axis([0,600,-15,0])
+plt.savefig('output/correlations/closebtwn.jpeg')
+plt.close()
+
+plt.figure()
+plt.plot(stats['flowcloseness'],(stats['flowbtwnness']), 'bo')
+plt.savefig('output/correlations/closebtwn_lin.jpeg')
+plt.close()
 
 plt.figure()
 plt.plot(log(stats['wdegree']),log(stats['flowbtwnness']), 'bo')
@@ -119,7 +136,17 @@ netplot('output/maps_flowclose.jpeg',mgdraw, pos, with_labels = False,
     node_color = statsdraw.sort(['pop'])['flowcloseness'],
     alpha = .7, linewidths = 0.5, width = 0)
 
+netplot('output/maps_eigenvc.jpeg',mgdraw, pos, with_labels = False, 
+    nodelist = list(statsdraw.sort(['pop']).index), 
+    node_size = sqrt(statsdraw.sort(['pop'])['pop']), 
+    node_color = statsdraw.sort(['pop'])['eigenvc'],
+    alpha = .7, linewidths = 0.5, width = 0)
 
+netplot('output/maps_weigenvc.jpeg',mgdraw, pos, with_labels = False, 
+    nodelist = list(statsdraw.sort(['pop']).index), 
+    node_size = sqrt(statsdraw.sort(['pop'])['pop']), 
+    node_color = sqrt(statsdraw.sort(['pop'])['weigenvc']),
+    alpha = .7, linewidths = 0.5, width = 0)
 
 plt.figure(figsize = (15,11))
 nx.draw(mgdraw, pos = pos, with_labels = False, 
