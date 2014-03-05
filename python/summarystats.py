@@ -44,6 +44,10 @@ msatots = msatots.set_index('msa')
 prlist = [10260, 46580, 10380, 25020, 32420, 41900, 41980, 17620, 42180, 21940, 27580, 49500, 38660]
 msatots = msatots.drop(prlist)
 
+#Top msas in 2010 for in and out
+print msatots.sort('e_in_0910', ascending = False)[['MSAName','e_in_0910']].iloc[0:20]
+print msatots.sort('e_out_0910', ascending = False)[['MSAName','e_out_0910']].iloc[0:20]
+
 #add changes
 msatots['change'] = 
     
@@ -57,4 +61,8 @@ for v in ['r','e','agi']:
         
     plt.yscale('log')
 
-        
+
+popstots = pd.merge(msatots, metros, how = 'left', left_index = True, right_index =True)
+popstots['inrate_09'] = popstots['e_in_0910'] / popstots['pop']
+
+print popstots.sort('inrate_09', ascending = False)[['MSAName_x','inrate_09','e_in_0910','pop']].iloc[0:20]

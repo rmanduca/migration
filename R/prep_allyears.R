@@ -38,26 +38,13 @@ cents = rename.vars(cents, from = c("INTPTLAT","INTPTLON"),to = c("lat","lon"))
 ## Migration Data ##
 #Inflow vs outflow appear equivalent except for sums at top of each entry and 60-80 records in only one of the two files
 
-years = c('0405','0506','0607','0708','0809','0910')
-totals = data.frame()
-msatotals = msanames
-
-for(yr in years){
+for(yr in c('0405','0506','0607','0708','0809','0910')){
 	
 #Inflow - primary data
 migr = read.csv(paste("data/irs/countyinflow",yr,".csv",sep = ''))
-
-#National Totals
-yrtotal = migr[migr$County_Name == "Total Mig - US" & migr$State_Abbrv == "US",7:9]
-yrtotal$year = yr
-totals = rbind(totals, yrtotal)
-
-#Drop suppressed data
-migr = migr[migr$Return_Num >=0,]
-
-#Create unified fips code
 migr$sto = as.character(migr$State_Code_Origin)
 migr[nchar(migr$sto)==1,"sto"] = paste("0",migr[nchar(migr$sto)==1,"sto"],sep ="")
+
 migr$std = as.character(migr$State_Code_Dest)
 migr[nchar(migr$std)==1,"std"] = paste("0",migr[nchar(migr$std)==1,"std"],sep ="")
 
@@ -86,26 +73,6 @@ outnotin = check2[is.na(check2$Return_Num.x) & check2$State_Code_Dest <57,]
 write.csv(innotout,paste('output/innotout',yr,'.csv',sep = ''), row.names= FALSE) 
 write.csv(outnotin,paste('output/outnotin',yr,'.csv',sep = ''), row.names= FALSE) 
 
-#Outmigration totals
-#Create unified fips code
-omigr$sto = as.character(omigr$State_Code_Origin)
-omigr[nchar(omigr$sto)==1,"sto"] = paste("0",omigr[nchar(omigr$sto)==1,"sto"],sep ="")
-omigr$std = as.character(omigr$State_Code_Dest)
-omigr[nchar(omigr$std)==1,"std"] = paste("0",omigr[nchar(omigr$std)==1,"std"],sep ="")
-
-omigr$cno = as.character(omigr$County_Code_Origin)
-omigr[nchar(omigr$cno)==1,"cno"] = paste("0",omigr[nchar(omigr$cno)==1,"cno"],sep ="")
-omigr[nchar(omigr$cno)==2,"cno"] = paste("0",omigr[nchar(omigr$cno)==2,"cno"],sep ="")
-
-omigr$cnd = as.character(omigr$County_Code_Dest)
-omigr[nchar(omigr$cnd)==1,"cnd"] = paste("0",omigr[nchar(omigr$cnd)==1,"cnd"],sep ="")
-omigr[nchar(omigr$cnd)==2,"cnd"] = paste("0",omigr[nchar(omigr$cnd)==2,"cnd"],sep ="")
-
-omigr$cntyo = paste(omigr$sto,omigr$cno,sep="")
-omigr$cntyd = paste(omigr$std,omigr$cnd,sep="")
-stopifnot(nchar(omigr$cntyo)==5)
-stopifnot(nchar(omigr$cntyd)==5)
-
 #### Merge and Aggregate Data ####
 
 ## Links ##
@@ -115,30 +82,15 @@ ccmigr = merge(ccmigr,ctomsa,by.x = "cntyd",by.y = "cnty", all.x = TRUE)
 ccmigr = rename.vars(ccmigr,from = c("msa.x","msa.y"),to = c("msao","msad"))
 #stopifnot(dim(ccmigr)[1]==110651)
 
-#Outflows for total stats
-ccomigr = merge(omigr,ctomsa,by.x = "cntyo",by.y = "cnty", all.x = TRUE)
-ccomigr = merge(ccomigr,ctomsa,by.x = "cntyd",by.y = "cnty", all.x = TRUE)
-ccomigr = rename.vars(ccomigr,from = c("msa.x","msa.y"),to = c("msao","msad"))
-
-#Total stats by MSA
-msa_totinflow = aggregate(ccmigr[,c('Exmpt_Num','Return_Num','Aggr_AGI')],list(ccmigr$msad),FUN = "sum")
-msa_totoutflow = aggregate(ccomigr[,c('Exmpt_Num','Return_Num','Aggr_AGI')],list(ccomigr$msao),FUN = "sum")
-msatots = merge(msa_totinflow, msa_totoutflow, by = 'Group.1', all = T)
-msatots = rename.vars(msatots, from = names(msatots), to = c('msa',paste('e_in_',yr,sep = ""),paste('r_in_',yr,sep = ""),paste('agi_in_',yr,sep = ""),paste('e_out_',yr,sep = ""),paste('r_out_',yr,sep = ""),paste('agi_out_',yr,sep = "")))
-
-msatotals = merge(msatotals, msatots, by = 'msa', all = T)
-
+#Limit to MSA to MSA
+mmmigr = ccmigr[!is.na(ccmigr$msao) & !is.na(ccmigr$msad),]
+stopifnot(mmmigr$Return_Num >=0)
+#stopifnot(dim(mmmigr)[1]==68831)
 
 #County-MSA flows
 ccmigr[is.na(ccmigr$msao),'msao'] = ccmigr[is.na(ccmigr$msao),'cntyo']
 ccmigr[is.na(ccmigr$msad),'msad'] = ccmigr[is.na(ccmigr$msad),'cntyd']
 
-
-#Limit to MSA to MSA
-mmmigr = ccmigr[!is.na(ccmigr$msao) & !is.na(ccmigr$msad),]
-
-stopifnot(mmmigr$Return_Num >=0)
-#stopifnot(dim(mmmigr)[1]==68831)
 
 #Collapse into MSA-MSA flows
 m2m = aggregate(mmmigr[,c('Exmpt_Num','Return_Num','Aggr_AGI')],list(mmmigr$msao,mmmigr$msad),FUN = "sum")
@@ -190,8 +142,3 @@ popmsa = merge(popmsa,cents,by.x = "id", by.y = 'msa', all = FALSE)
 #Export
 write.csv(popmsa,'output/msadata.csv',row.names=FALSE)
 
-#Export Totals
-write.csv(totals, 'output/yrtotals.csv', row.names = F)
-
-#Export MSA totals
-write.csv(msatotals, 'output/msatotals.csv', row.names = F)
