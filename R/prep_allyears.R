@@ -73,6 +73,12 @@ outnotin = check2[is.na(check2$Return_Num.x) & check2$State_Code_Dest <57,]
 write.csv(innotout,paste('output/innotout',yr,'.csv',sep = ''), row.names= FALSE) 
 write.csv(outnotin,paste('output/outnotin',yr,'.csv',sep = ''), row.names= FALSE) 
 
+### Remove -1's and set negative AGIs to null ###
+dim(migr[migr$Return_Num < 0,])
+migr = migr[migr$Return_Num >=0,]
+dim(migr[migr$Aggr_AGI <0,])
+migr[migr$Aggr_AGI<0,'Aggr_AGI'] = NA
+
 #### Merge and Aggregate Data ####
 
 ## Links ##
