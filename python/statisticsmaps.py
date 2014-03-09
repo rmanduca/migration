@@ -21,7 +21,7 @@ from importnetworks import importnetwork
 os.chdir("/Users/Eyota/projects/thesis")
 
 year = '0910'
-width = 4600000
+width = 4700000
 height = 3100000
 
 metros, mg = importnetwork(year)
@@ -74,7 +74,7 @@ mgdraw = mg.copy()
 mgdraw.remove_nodes_from(akhi)
 
 #Play with projections
-project = pyproj.Proj('+proj=aea +lat_1=20 +lat_2=60 +lat_0=38.5 +lon_0=-97 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs')
+project = pyproj.Proj('+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=38.5 +lon_0=-97 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs')
 
 t = project(statsdraw['lon'],statsdraw['lat'])
 pos = dict(zip(statsdraw.index,zip(t[0]+width / 2,t[1] + height / 2)))
@@ -124,7 +124,7 @@ plt.plot(log(stats['wdegree']),log(stats['flowbtwnness']), 'bo')
 
 #Try drawing - degree
 
-netplot('output/maps_degree.jpeg',mgdraw, pos, with_labels = False, 
+netplot('output/maps_degree.jpeg',width, height, mgdraw, pos, with_labels = False, 
     nodelist = list(statsdraw.sort(['pop']).index), 
     node_size = sqrt(statsdraw.sort(['pop'])['pop']), 
     node_color = statsdraw.sort(['pop'])['degree'],

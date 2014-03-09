@@ -4,6 +4,7 @@
 # Output link csv with origin destination, returns, exemptions, total agi
 
 library(gdata)
+library(foreign)
 setwd("~/projects/thesis")
 
 #### Import data ####
@@ -30,10 +31,20 @@ msanames$msa = as.character(msanames$MSACode)
 stopifnot(nchar(msanames$msa )==5)
 
 ## Centroids ##
-cents = read.table("data/msas/MSACents.txt", header = TRUE,sep = ",")
+cents = read.dbf('data/msas/tl_2010_us_cbsa10/tl_2010_us_cbsa10.dbf')
+#cent2 = read.table("data/msas/MSACents.txt", header = TRUE,sep = ",")
 cents$msa = as.character(cents$CBSAFP)
-cents = cents[,c("msa","INTPTLAT","INTPTLON")]
-cents = rename.vars(cents, from = c("INTPTLAT","INTPTLON"),to = c("lat","lon"))
+cents$lat = as.numeric(as.character(cents$INTPTLAT10))
+cents$lon = as.numeric(as.character(cents$INTPTLON10))
+cents = cents[,c("msa","lat","lon")]
+
+#Bring in county centroids
+ccents = read.dbf('data/msas/tl_2013_us_county/tl_2013_us_county.dbf')
+ccents$fips = as.character(ccents$GEOID)
+ccents$lat = as.numeric(as.character(ccents$INTPTLAT))
+ccents$lon = as.numeric(as.character(ccents$INTPTLON))
+ccents$cid = paste('c_',ccents$fips,sep = "")
+ccents = ccents[,c("fips","lat","lon",'cid')]
 
 ## Migration Data ##
 #Inflow vs outflow appear equivalent except for sums at top of each entry and 60-80 records in only one of the two files
@@ -73,11 +84,14 @@ outnotin = check2[is.na(check2$Return_Num.x) & check2$State_Code_Dest <57,]
 write.csv(innotout,paste('output/innotout',yr,'.csv',sep = ''), row.names= FALSE) 
 write.csv(outnotin,paste('output/outnotin',yr,'.csv',sep = ''), row.names= FALSE) 
 
-### Remove -1's and set negative AGIs to null ###
+# Export list of -1's, then remove -1's and set negative AGIs to null ###
 dim(migr[migr$Return_Num < 0,])
+write.csv(migr[migr$Return_Num < 0,], paste('output/minus1s_',yr,'.csv',sep = ""), row.names = FALSE)
 migr = migr[migr$Return_Num >=0,]
 dim(migr[migr$Aggr_AGI <0,])
+write.csv(migr[migr$Aggr_AGI < 0,], paste('output/negAGI_',yr,'.csv',sep = ""), row.names = FALSE)
 migr[migr$Aggr_AGI<0,'Aggr_AGI'] = NA
+#This appears to be working, but gave trouble one time
 
 #### Merge and Aggregate Data ####
 
@@ -88,15 +102,11 @@ ccmigr = merge(ccmigr,ctomsa,by.x = "cntyd",by.y = "cnty", all.x = TRUE)
 ccmigr = rename.vars(ccmigr,from = c("msa.x","msa.y"),to = c("msao","msad"))
 #stopifnot(dim(ccmigr)[1]==110651)
 
+##MSA-MSA flows
 #Limit to MSA to MSA
 mmmigr = ccmigr[!is.na(ccmigr$msao) & !is.na(ccmigr$msad),]
 stopifnot(mmmigr$Return_Num >=0)
 #stopifnot(dim(mmmigr)[1]==68831)
-
-#County-MSA flows
-ccmigr[is.na(ccmigr$msao),'msao'] = ccmigr[is.na(ccmigr$msao),'cntyo']
-ccmigr[is.na(ccmigr$msad),'msad'] = ccmigr[is.na(ccmigr$msad),'cntyd']
-
 
 #Collapse into MSA-MSA flows
 m2m = aggregate(mmmigr[,c('Exmpt_Num','Return_Num','Aggr_AGI')],list(mmmigr$msao,mmmigr$msad),FUN = "sum")
@@ -105,6 +115,36 @@ m2m = m2m[m2m$source != m2m$target,]
 
 #Export
 write.csv(m2m,paste('output/m2m',yr,'.csv',sep = ''), row.names= FALSE)
+
+
+##County-MSA flows
+#Drop destinations that aren't counties
+ccmigr = ccmigr[ccmigr$County_Code_Dest != 0,]
+
+#Drop origins that aren't from states
+ccmigr = ccmigr[ccmigr$State_Code_Origin < 57,]
+
+#Make counties into MSAs for purposes of aggregation
+ccmigr[is.na(ccmigr$msao),'msao'] = paste("c_", ccmigr[is.na(ccmigr$msao),'cntyo'], sep = '')
+ccmigr[is.na(ccmigr$msad),'msad'] = paste('c_', ccmigr[is.na(ccmigr$msad),'cntyd'], sep = '')
+
+#Collapse into MSA-County flows
+c2m = aggregate(ccmigr[,c('Exmpt_Num','Return_Num','Aggr_AGI')],list(ccmigr$msao,ccmigr$msad),FUN = "sum")
+c2m = rename.vars(c2m,from = c("Group.1","Group.2"),to = c("source","target"))
+c2m = c2m[c2m$source != c2m$target,]
+
+#Confirm this matches m2m for msa-msa flows
+check3 = merge(c2m,m2m, by = c('source','target'),all.y = T)
+
+#Same size
+stopifnot(dim(check3)[1] == dim(m2m)[1])
+#Same values
+stopifnot(check3$Exmpt_Num.x == check3$Exmpt_Num.y)
+stopifnot(check3$Return_Num.x == check3$Return_Num.y)
+stopifnot((check3$Aggr_AGI.x == check3$Aggr_AGI.y) | is.na(check3$Aggr_AGI.x)) #Because of the NAs in AGI in introduce earlier
+
+#Export
+write.csv(c2m, paste('output/c2m',yr,'.csv',sep = ''),row.names = F)
 
 #Add both directions; only count once
 #Merge on other direction
@@ -134,17 +174,34 @@ write.csv(mcol[mcol$exmptgross > 0,],paste('output/grossm_abridged',yr,'.csv',se
 
 #Population
 #Merge
-popdat = merge(popdat,ctomsa,by = "cnty",all.x = FALSE)
-stopifnot(dim(popdat)[1]==1863)
+cmpop = merge(popdat,ctomsa,by = "cnty",all.x = T)
+stopifnot(dim(cmpop)[1]==3221)
+mpop = merge(popdat,ctomsa,by = "cnty",all.x = F)
+stopifnot(dim(mpop)[1]==1863)
 
-#Collapse
-popmsa = aggregate(popdat$pop,list(popdat$msa),FUN = "sum")
-popmsa = rename.vars(popmsa,from = c("Group.1","x"),to = c("id","pop"))
-popmsa = merge(popmsa,msanames,by.x = "id", by.y = "msa", all )
+#Collapse to counties and MSAs
+cmpop[is.na(cmpop$msa),'msa'] = paste('c_',cmpop[is.na(cmpop$msa),'cnty'],sep = "")
+popcm = aggregate(cmpop$pop, list(cmpop$msa),FUN = 'sum')
+popcm = rename.vars(popcm,from = c("Group.1","x"),to = c("id","pop"))
+stopifnot(dim(popcm)[1]==2313)
+
+#Add in county and MSA lat and long
+popcm = merge(popcm, cents, by.x = 'id', by.y = 'msa', all.x = T)
+popcm = merge(popcm, ccents, by.x = 'id', by.y = 'cid', all.x = T)
+popcm[is.na(popcm$lat.x), 'lat.x'] = popcm[is.na(popcm$lat.x), 'lat.y'] 
+popcm[is.na(popcm$lon.x), 'lon.x'] = popcm[is.na(popcm$lon.x), 'lon.y'] 
+stopifnot(!is.na(popcm$lat.x))
+popcm = rename.vars(popcm, c('lat.x','lon.x'), c('lat','lon'))
+popcm = popcm[,1:5]
+
+#MSA
+popmsa = popcm[substr(popcm$id,1,1) != 'c',]
 stopifnot(dim(popmsa)[1]==955)
+popmsa = merge(popmsa,msanames,by.x = "id", by.y = "msa", all )
 stopifnot(is.na(popmsa$MSAName)==FALSE)
-popmsa = merge(popmsa,cents,by.x = "id", by.y = 'msa', all = FALSE)
+popmsa = popmsa[,setdiff(names(popmsa),'fips')]
 
 #Export
 write.csv(popmsa,'output/msadata.csv',row.names=FALSE)
+write.csv(popcm,'output/cmdata.csv',row.names=FALSE)
 
