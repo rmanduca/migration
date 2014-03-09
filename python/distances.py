@@ -12,6 +12,8 @@ import pyproj
 sys.path.append('/Users/Eyota/projects/thesis/code/python/modules')
 from distance import great_circle_distance
 
+os.chdir("/Users/Eyota/projects/thesis")
+
 cmsas = pd.io.parsers.read_csv('output/cmdata.csv')
 cmsas['fips2'] = cmsas['id']
 cmsas.set_index('id', inplace = True)
@@ -46,11 +48,8 @@ def radiation(x,y):
     return rad
 
 #In the radiation matrix, note that the x,yth cell is the flow from x to y
-for c in rad.columns:
+for c in rad.columns[67:]:
+    print c
     rad[c] = cmsas.apply(lambda x: radiation(x['fips2'],c), axis = 1)
-    
-    
-    for i in rad.index:
-        rad.loc[i,c] = radiation(i,c)
         
 rad.to_csv('output/radiation_matrix.csv')
