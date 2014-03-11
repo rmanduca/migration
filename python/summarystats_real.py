@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 #import pyproj
 import numpy as np
 from scipy.stats import gaussian_kde
+import re
 
 os.chdir("/Users/Eyota/projects/thesis")
 
@@ -42,11 +43,6 @@ for yr in ['0405','0506','0607','0708','0809','0910']:
     metros = pd.merge(metros,inm, how = 'left', left_index = True, right_index = True)
     metros = pd.merge(metros,outm, how = 'left', left_index = True, right_index = True)
 
-print metros.sort('e_in_0910', ascending = False)[['MSAName','e_in_0910','r_in_0910','agi_in_0910']].iloc[0:20]
-print metros.sort('e_out_0910', ascending = False)[['MSAName','e_out_0910']].iloc[0:20]
-
-
-print metros.sort('e_in_0910', ascending = False)[['MSAName','e_in_0910','r_in_0910','agi_in_0910']].iloc[0:20]
 
 #output
 
@@ -57,18 +53,23 @@ links.fillna(0, inplace = True)
 (links == -99).sum()
 links = links.replace(-99, NaN)
 
+#Short names
+metros['shortname'] = metros['MSAName'].apply(lambda x: re.search('^.*?[-,]',x).group(0)[:-1] + re.search(', [A-Z][A-Z]',x).group(0))
+
 metros.to_csv('output/metrototals.csv')
 links.to_csv('output/m2m_allyrs.csv')
 
-
+#Labeled links
 lcolnames = list(links.columns)
-linklab = pd.merge(links, metros[['MSACode','MSAName']], how = 'left', left_on = 'source', right_on = 'MSACode')
-linklab = pd.merge(linklab, metros[['MSACode','MSAName']], how = 'left', left_on = 'target', right_on = 'MSACode')
+linklab = pd.merge(links, metros[['MSACode','shortname']], how = 'left', left_on = 'source', right_on = 'MSACode')
+linklab = pd.merge(linklab, metros[['MSACode','shortname']], how = 'left', left_on = 'target', right_on = 'MSACode')
 linklab.columns = lcolnames +['s_fips','s_name','t_fips','t_name']
 
-#look at high per capita links
+#look at high per capita links 
 yr = '0910'
 #Giving me way more nulls here than it should. ~~ 9500 where the denominator != 0 but still returning Nan
+#Come back to this if necessary
+'''
 linklab['percap_0910'] = (1.0 * links['agi_0910'] )/(1.0 *links['e_0910'])
 linklab['percap_0910'] = (1.0 * links['agi_%s' %yr] )/(1.0 *links['e_%s' %yr])
 linklab['percap_0910'] = linklab.apply(lambda x: x['agi_%s' % yr] / x['e_%s' %yr], axis = 1)
@@ -81,7 +82,7 @@ linklab[linklab['e_%s' %yr] !=0]['percap_0910'] = linklab[linklab['e_%s' %yr] !=
 print linklab[linklab['e_0910'] > 0].sort('percap_0910', ascending = False)[['e_0910','agi_0910','percap_0910','s_name','t_name']].iloc[0:5]
 
 linklab[(linklab['e_%s' %yr] !=0) & (pd.isnull(linklab['percap_0910']))]
-
+'''
 
 #Total inter-Metro moves by year
 for v in ['r','e','agi']:
@@ -103,6 +104,51 @@ for v in ['r','e','agi']:
     plt.show()
     plt.savefig('output/summarystats/yrtotals_%s' %v)
     plt.close()
+
+#Lists of top metros for each year
+for v in ['r','e','agi']:
+    for yr in ['0405','0506','0607','0708','0809','0910']:
+        inm = metros.sort('%s_in_%s' %(v,yr), ascending = False)[['shortname','%s_in_%s' %(v,yr)]].iloc[0:20]
+        inm.columns = ['name_in','in']
+        inm.reset_index(inplace = True, drop = True)
+        outm = metros.sort('%s_out_%s' %(v,yr), ascending = False)[['shortname','%s_out_%s' %(v,yr)]].iloc[0:20]
+        outm.reset_index(inplace = True, drop = True)
+        outm.columns = ['name_out','out']
+        gross = pd.concat([ metros['shortname'],metros['%s_in_%s' %(v,yr)] + metros['%s_out_%s' %(v,yr)]], axis = 1)
+        gross.columns = ['name_gross','gross']
+        gross = gross.sort('gross',ascending = False).iloc[0:20]
+        gross.reset_index(inplace =  True, drop = True)
+        net = pd.concat([ metros['shortname'],metros['%s_in_%s' %(v,yr)] - metros['%s_out_%s' %(v,yr)]], axis = 1)
+        net.columns = ['name_net','net']
+        net = net.sort('net',ascending = False).iloc[0:20]
+        net.reset_index(inplace =  True, drop = True)
+
+        statex = pd.concat([inm,outm,gross,net], axis = 1)
+        statex.iloc[0]
+        statex.iloc[1]
+        
+        statex.to_csv('output/summarystats/top20tables/top20_metros_%s_%s.csv' %(v,yr), index = False)
+            
+#lists of top links per year
+for v in ['r','e','agi']:
+    for yr in ['0405','0506','0607','0708','0809','0910']:
+        toplinks = linklab.dropna(subset = ['%s_%s' %(v,yr)]).sort('%s_%s' %(v,yr), ascending = False).iloc[0:20][['s_name','t_name','%s_%s' %(v,yr)]]
+        toplinks.to_csv('output/summarystats/top20tables/top20_links_%s_%s.csv' %(v,yr), index = False)
+        latex = file('latex/tex/linkstab_%s_%s.tex' %(v,yr), 'w')
+        latex.write(toplinks.iloc[0:10].to_latex())
+        latex.close()
+        
+        
+sumtab = pd.concat( metros.sort('%s_in_%yr' %(v,yr), ascending = False)[['shortname','%s_in_%yr' %(v,yr)],0:20]\
+            metros.sort('%s_in_%yr' %(v,yr), ascending = False)[['shortname','%s_in_%yr' %(v,yr)]]\
+        
+        
+print metros.sort('e_in_0910', ascending = False)[['shortname','e_in_0910']
+
+,'r_in_0910','agi_in_0910']].iloc[0:20]
+print metros.sort('e_out_0910', ascending = False)[['MSAName','e_out_0910']].iloc[0:20]
+print metros.sort('e_in_0910', ascending = False)[['MSAName','e_in_0910','r_in_0910','agi_in_0910']].iloc[0:20]
+
 
 #Metro trends over time
 for v in ['r','e','agi']:
