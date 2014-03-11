@@ -22,18 +22,18 @@ cmsas.set_index('id', inplace = True)
 
 #Bring in partially completed radiation 
 #New
-#rad = pd.DataFrame(index = cmsas.index, columns = cmsas.index)
+rad = pd.DataFrame(index = cmsas.index, columns = cmsas.index)
 #Bring in existing
-rad = pd.io.parsers.read_csv('output/radiation_matrix.csv')
-rad['id'] = rad['id'].apply(str)
+#rad = pd.io.parsers.read_csv('output/radiation_matrix.csv')
+#rad['id'] = rad['id'].apply(str)
 rad.set_index('id', inplace =True)
 startcode = rad.iloc[0][pd.isnull(rad.iloc[0])].index[0]
 startcol = find(rad.columns == startcode)[0]
 
 def popcirc(x,y):
     cutoff = dists.loc[x,y]
-    quallist = dists[dists[x] < cutoff].index
-    totpop = cmsas.loc[quallist].sum()['pop']
+    quallist = dists[dists[x] < cutoff].index # strict inequality prevents y from being included
+    totpop = cmsas.loc[quallist].sum()['pop'] - cmsas.loc[x,'pop']
     return totpop
     
 def radiation(x,y):
@@ -46,7 +46,7 @@ def radiation(x,y):
     return rad
 
 #In the radiation matrix, note that the x,yth cell is the flow from x to y
-for c in rad.columns[startcol:startcol+50]:
+for c in rad.columns[startcol:]:
     print c
     rad[c] = test = cmsas.apply(lambda x: radiation(x['fips2'],c), axis = 1)
         
