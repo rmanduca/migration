@@ -6,7 +6,9 @@ import matplotlib.pyplot as plt
 import pyproj
 import random as rd
 import pylab as pl
-from numpy import sqrt
+import re
+
+from numpy import sqrt, round
 #import community as cm
 
 #New Modules
@@ -63,6 +65,7 @@ for l in mg.edges(data = True):
         l[2]['form_exmpt'] = l[2]['exmptgross']
          
     
+#Degree weighted by % cross-community
 wexmpt = mg.degree(weight = 'w_exmpt')
 metros = dict2column(metros, wexmpt, 'wexmpt')
 
@@ -73,20 +76,85 @@ metros = dict2column(metros, deg, 'wdeg')
 #Average outside com
 metros['outcom'] = metros['wexmpt'] / metros['wdeg']
 
+#Degree outside formal community
+wform = mg.degree(weight = 'form_exmpt')
+metros = dict2column(metros, wform, 'wform')
+
+#avg outside form com
+metros['outformcom'] = round(1.0* metros['wform'] / metros['wdeg'],2)
+
+#within comm degree
+metros['incom_exmpt'] = metros['wdeg'] - metros['wexmpt']
+
+#Shortnames
+metros['shortname'] = metros['MSAName'].apply(lambda x: re.search('^.*?[-,]',x).group(0)[:-1] + re.search(', [A-Z][A-Z]',x).group(0))
+
+
 metrosdraw = metros.drop(akhi)
 
 #maps
-for stat in ['wexmpt','outcom','wdeg']:
+for stat in ['wexmpt','outcom','wdeg', 'wform','outformcom','incom_exmpt','pop']:
     netplot('output/maps_%s.jpeg' %stat,width, height,mgdraw, pos, with_labels = False, 
     nodelist = list(metrosdraw.sort(['pop']).index), 
     node_size = sqrt(metrosdraw.sort(['pop'])['pop']), 
     node_color = metrosdraw.sort(['pop'])[stat],
     alpha = .7, linewidths = 0.5, width = 0)
     
+    
+netplot('output/maps_%s.jpeg' %'test',width, height,mgdraw, pos, with_labels = False, 
+    nodelist = list(metrosdraw[metrosdraw['wexmpt']<100].sort(['pop']).index), 
+    node_size = sqrt(metrosdraw[metrosdraw['wexmpt']<100].sort(['pop'])['pop']), 
+    node_color = metrosdraw[metrosdraw['wexmpt']<100].sort(['pop'])['wexmpt'],
+    alpha = .7, linewidths = 0.5, width = 0)
+    
+    
+netplot('output/maps_%s.jpeg' %'test2',width, height,mgdraw, pos, with_labels = False, 
+    nodelist = list(metrosdraw[metrosdraw['wexmpt']>=100].sort(['pop']).index), 
+    node_size = sqrt(metrosdraw[metrosdraw['wexmpt']>=100].sort(['pop'])['pop']), 
+    node_color = metrosdraw[metrosdraw['wexmpt']>=100].sort(['pop'])['wexmpt'],
+    alpha = .7, linewidths = 0.5, width = 0)
+
 #Chicago is dominant
 #Lots of places in the midwest have high percentages not in same community, but maybe that's because the communities are less well defined? Try comparing to 
 # map just based on if places are in the same community.
 
+#Plots of pop vs degree, weighted vs unweighted, etc
 
+plt.figure()
+plt.plot(metros['wdeg'],metros['wexmpt'], 'bo')
+plt.yscale('log')
+plt.xscale('log')
+plt.savefig('output/correlations/wdegwexmpt.jpeg')
+plt.close()
 
-#Seems like akhi arent working in the com detect right
+plt.figure()
+plt.plot(metros['pop'],metros['wexmpt'], 'bo')
+plt.yscale('log')
+plt.xscale('log')
+plt.savefig('output/correlations/popwexmpt.jpeg')
+plt.close()
+
+plt.figure()
+plt.plot(metros['wdeg'],metros['outcom'], 'bo')
+#plt.yscale('log')
+plt.xscale('log')
+plt.savefig('output/correlations/wdegoutcom.jpeg')
+plt.close()
+
+plt.figure()
+plt.scatter(metros['incom_exmpt'],metros['wexmpt'],c = metros['pop'], s = 100)
+#plt.yscale('linear')
+#plt.xscale('log')
+#plt.axis([0,1000000,0,1000000])
+tolabel = metros[ (metros['incom_exmpt']>60000) |( metros['wexmpt'] > 20000)]
+#.sort('wexmpt', ascending = False).iloc[0:10]
+for label, x, y in zip(tolabel['shortname'],tolabel['incom_exmpt'],tolabel['wexmpt']):
+     plt.annotate(
+        label, 
+        xy = (x, y))
+plt.savefig('output/correlations/incom_outcom.jpeg')
+plt.close()
+
+#Plot wdeg vs wdeg weighted by outside coms
+#Look for within community degree and outside com degree.
+#Plot some sort of entropy index based on which communities

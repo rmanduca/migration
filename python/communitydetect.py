@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import pyproj
 import random as rd
 import pylab as pl
+import mpl_toolkits.basemap as bm
+
 from numpy import sqrt
 #import community as cm
 
@@ -97,7 +99,26 @@ netplot('output/communities_95_%s.jpg' %year,width, height, comnetdraw,pos,with_
         node_size = sqrt(comsdraw.sort(['pop'])['pop']),
         node_color = 'gray',
         edgelist = elist
-        )        
+        )     
+
+#Add in state lines   
+plt.figure(figsize = (15,11))
+m = bm.Basemap(width = width, height = height, projection = 'aea', resolution = 'l', lat_1 = 29.5, lat_2 = 45.5, lat_0 = 38.5, lon_0 = -97)
+m.drawcountries()
+m.drawcoastlines()
+m.drawstates()
+plt.show()    
+
+nx.draw(comnetdraw, pos,with_labels = False,alpha = .1, linewidths = 0, 
+        nodelist = list(comsdraw.sort(['pop']).index),
+        node_size = sqrt(comsdraw.sort(['pop'])['pop']),
+        node_color = 'gray',
+        edgelist = elist)
+#plt.axis([-2300000,2100000, -1800000, 1500000])
+
+
+plt.savefig('output/communities_95_%s_states.jpg' %year)
+plt.close()
                 
                 
 #Squared
@@ -146,11 +167,13 @@ comcol.to_csv('output/comcol.csv')
 
 #Then try to pick one set of communities
 #The best one is picked in 6 of the 10 times I try running it. That's saved as 'output/comsformal.csv'
+
+for i in [22]:    
     p2 = cm.best_partition(comnet)
     comsdraw2 = dict2column(comsdraw, p2,'formalcom')
     coms2 = dict2column(coms, p2,'formalcom')
 
-netplot('output/test2comdetect11.jpg',width, height,mgdraw,pos,with_labels = False,alpha = 1, linewidths = 0.5, width = 0,
+    netplot('output/test2comdetect%s.jpg' %i,width, height,mgdraw,pos,with_labels = False,alpha = 1, linewidths = 0.5, width = 0,
         nodelist = list(comsdraw2.sort(['pop']).index),
         node_size = sqrt(comsdraw2.sort(['pop'])['pop']),
         node_color = comsdraw2.sort(['pop'])['formalcom'])
