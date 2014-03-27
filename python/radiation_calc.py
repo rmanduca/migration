@@ -22,13 +22,13 @@ cmsas.set_index('id', inplace = True)
 
 #Bring in partially completed radiation 
 #New
-rad = pd.DataFrame(index = cmsas.index, columns = cmsas.index)
+#rad = pd.DataFrame(index = cmsas.index, columns = cmsas.index)
 #Bring in existing
-#rad = pd.io.parsers.read_csv('output/radiation_matrix.csv')
-#rad['id'] = rad['id'].apply(str)
+rad = pd.io.parsers.read_csv('output/radiation_matrix_loop.csv')
+rad['id'] = rad['id'].apply(str)
 rad.set_index('id', inplace =True)
-startcode = rad.iloc[0][pd.isnull(rad.iloc[0])].index[0]
-startcol = find(rad.columns == startcode)[0]
+startcode = rad['c_72147'][pd.isnull(rad['c_72147'])].index[0]
+startrow = find(rad.index == startcode)[0]
 
 def popcirc(x,y):
     cutoff = dists.loc[x,y]
@@ -44,10 +44,22 @@ def radiation(x,y):
     circpop = popcirc(x,y)
     rad = round(10000000.0*(xpop*ypop)/((xpop + circpop)*(xpop+ypop+circpop)))
     return rad
+#28020
+
+
+for i in cmsas.index[startrow:]:
+    print i
+    for j in cmsas.index:
+        if j == i:
+            continue
+        else:
+            rad.loc[i,j] = radiation(i,j)
+
+
 
 #In the radiation matrix, note that the x,yth cell is the flow from x to y
 for c in rad.columns[startcol:]:
     print c
     rad[c] = test = cmsas.apply(lambda x: radiation(x['fips2'],c), axis = 1)
         
-rad.to_csv('output/radiation_matrix.csv')
+rad.to_csv('output/radiation_matrix_loop.csv')

@@ -55,7 +55,7 @@ def importnetwork(year):
     
     mg.add_edges_from(edgedata)
     
-    return [metros, mg]
+    return [metros, mg, nodedata]
 
 '''
 #Find PR metros with now nodes

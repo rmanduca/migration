@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import pyproj
 import random as rd
 import pylab as pl
+from numpy import sqrt
 #import community as cm
 
 #New Modules
@@ -18,8 +19,10 @@ import com2 as cm
 os.chdir("/Users/Eyota/projects/thesis")
 
 year = '0910'
+width = 4700000
+height = 3100000
 
-importnetwork(year)
+metros, mg, nodedata = importnetwork(year)
 
 coms = metros
 
@@ -36,9 +39,9 @@ mgdraw.remove_nodes_from(akhi)
 comsdraw = coms[(metros['lon'] < -60) & (metros['lon'] >-125)]
 
 #Projection
-project = pyproj.Proj('+proj=aea +lat_1=20 +lat_2=60 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs')
+project = pyproj.Proj('+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=38.5 +lon_0=-97 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs')
 t = project(metros['lon'],metros['lat'])
-pos = dict(zip(metros.index,zip(t[0],t[1])))
+pos = dict(zip(metros.index,zip(t[0]+width / 2,t[1] + height / 2)))
 
 '''
 nx.draw(nodelist = list(statsdraw.sort(['pop']).index), 
@@ -62,7 +65,7 @@ for i in range(100):
     #I think it's ok to use the full network including AKHI
     comsdraw = dict2column(comsdraw, partition,'com%s'%i)
     #'part%s' %i)
-    netplot('output/commaps/maps_com_%s_%s.jpeg'%(i,year),mgdraw,pos,with_labels = False,alpha = 1, linewidths = 0.5, width = 0,
+    netplot('output/commaps/maps_com_%s_%s.jpeg'%(i,year),width, height, mgdraw,pos,with_labels = False,alpha = 1, linewidths = 0.5, width = 0,
         nodelist = list(comsdraw.sort(['pop']).index),
         node_size = sqrt(comsdraw.sort(['pop'])['pop']),
         node_color = comsdraw.sort(['pop'])['com%s'%i])
@@ -89,7 +92,7 @@ comnetdraw.remove_nodes_from(akhi)
 elist = [(u,v) for (u,v,d) in comnet.edges(data = True) if d['weight'] >=95]
 
 #Plot groups that are always in the same network
-netplot('output/communities_95_%s.jpg' %year,comnetdraw,pos,with_labels = False,alpha = .1, linewidths = 0, 
+netplot('output/communities_95_%s.jpg' %year,width, height, comnetdraw,pos,with_labels = False,alpha = .1, linewidths = 0, 
         nodelist = list(comsdraw.sort(['pop']).index),
         node_size = sqrt(comsdraw.sort(['pop'])['pop']),
         node_color = 'gray',
@@ -105,7 +108,7 @@ ecol = comcol['cnt']**2
 #[d['weight'] for (u,v,d) in comnet.edges(data = True)]
 
 #Plot with weights that depend on number of overlapping communities
-netplot('output/communities_10_squared_100_%s.jpg' %year,comnetdraw,pos,with_labels = False,alpha = 0.1, linewidths = 0, 
+netplot('output/communities_10_squared_100_%s.jpg' %year,width, height, comnetdraw,pos,with_labels = False,alpha = 0.1, linewidths = 0, 
         nodelist = list(comsdraw.sort(['pop']).index),
         node_size = sqrt(comsdraw.sort(['pop'])['pop']),
         node_color = 'gray',
@@ -121,7 +124,7 @@ ecol = comcol['cnt']
 #[d['weight'] for (u,v,d) in comnet.edges(data = True)]
 
 #Plot with weights that depend on number of overlapping communities
-netplot('output/communities_10_lin_100_%s.jpg' %year,comnetdraw,pos,with_labels = False,alpha = 0.1, linewidths = 0, 
+netplot('output/communities_10_lin_100_%s.jpg' %year,width, height, comnetdraw,pos,with_labels = False,alpha = 0.1, linewidths = 0, 
         nodelist = list(comsdraw.sort(['pop']).index),
         node_size = sqrt(comsdraw.sort(['pop'])['pop']),
         node_color = 'gray',
@@ -131,3 +134,25 @@ netplot('output/communities_10_lin_100_%s.jpg' %year,comnetdraw,pos,with_labels 
         )   
   
 #nx.draw(mgdraw, pos,with_labels = False,alpha = .7, linewidths = 0.5, width = 0)
+
+#output network
+
+comcol.to_csv('output/comcol.csv')
+
+##Formalize
+#Do one where you weight degree by (100 - number of times in the same community) / 100.
+#Both weighted sum and weighted average - most diverse places and biggest hugs
+
+
+#Then try to pick one set of communities
+#The best one is picked in 6 of the 10 times I try running it. That's saved as 'output/comsformal.csv'
+    p2 = cm.best_partition(comnet)
+    comsdraw2 = dict2column(comsdraw, p2,'formalcom')
+    coms2 = dict2column(coms, p2,'formalcom')
+
+netplot('output/test2comdetect11.jpg',width, height,mgdraw,pos,with_labels = False,alpha = 1, linewidths = 0.5, width = 0,
+        nodelist = list(comsdraw2.sort(['pop']).index),
+        node_size = sqrt(comsdraw2.sort(['pop'])['pop']),
+        node_color = comsdraw2.sort(['pop'])['formalcom'])
+        
+      #  coms2.to_csv('output/comsformal.csv')
