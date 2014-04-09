@@ -37,6 +37,10 @@ metros[['e_in_0910','e_out_0910']].sum()
 abs(metros['netin0910']).sum()
 #Correlation of in and out gives R2, pct of variation that's just due to reciprocity
 #Plot of in vs out in each year
+
+#The above may not be quite right. It's by city not by link. May want to do by link.
+
+
 plt.figure()
 plt.scatter(metros['e_in_0910'],metros['e_out_0910'])
 plt.xscale('log')

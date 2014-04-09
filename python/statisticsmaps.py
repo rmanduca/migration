@@ -24,7 +24,7 @@ year = '0910'
 width = 4700000
 height = 3100000
 
-metros, mg = importnetwork(year)
+metros, mg, nodedata = importnetwork(year)
 
 #Compute statistics
 stats = metros
