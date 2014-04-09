@@ -1,6 +1,7 @@
 """
 Start doing statistics!
-
+Calculates network statistics on the 09-10 data, and makes maps of them.
+Also makes pairwise plots comparing various statistics
 """
 
 import os
