@@ -74,7 +74,7 @@ ssr = m2m['ssr'].sum()
 #Actually maybe not - the proportions were weighted based on total flows, so the above should be accounted for
 #So maybe the radiation model predicts more closer moves/more msa-county moves than we see?
 
-totalflows.sum() #5958857
+totflows.sum() #5958857
 m2m['e_0910'].sum() # 5280236
 m2m['pred'].sum() #4731881
 
@@ -103,7 +103,7 @@ m2m.sort('pct',ascending = True)[['shortname_s','shortname_t','pred','e_0910','p
 #Plot predicted vs actual
 plt.figure()
 plt.plot(m2m['e_0910'],m2m['pred'], 'bo')
-plt.savefig('output/radiation/rad_predvsactual.jpeg')
+plt.savefig('output/radiation/rad_predvsactual.pdf')
 plt.close()
 
 
