@@ -25,6 +25,9 @@ radmo = radmo.drop(prlist)
 
 #Bring in total county-MSA flows for 2009-2010 to scale properly
 flows = pd.io.parsers.read_csv('output/c2m0910.csv')
+#Check out MSA-county and MSA-MSA flows
+flows['cnty_orig'] = flows.apply(lambda x: x['source'][0] == 'c',1)
+flows['cnty_dest'] = flows.apply(lambda x: x['target'][0] == 'c',1)
 
 #Aggregate by source
 totflows = flows.groupby('source')
@@ -37,6 +40,8 @@ for i in msas:
     print i
     predval.loc[i] = radmo.loc[i].apply(lambda x: x / 10000000 * totflows.loc[i,'Exmpt_Num'])
     
+predval.to_csv('output/predval_0910.csv')
+
 #Bring in m2m_allyears 
 m2m = pd.io.parsers.read_csv('output/m2m_allyrs.csv')
 m2m['source'] = m2m['source'].apply(int).apply(str)
@@ -74,9 +79,46 @@ ssr = m2m['ssr'].sum()
 #Actually maybe not - the proportions were weighted based on total flows, so the above should be accounted for
 #So maybe the radiation model predicts more closer moves/more msa-county moves than we see?
 
-totflows.sum() #5958857
+totflows.sum() #5958857 all migration in the country
+flows.groupby(['cnty_dest','cnty_orig']).agg(sum) #Break out by origin and dest msa/county
+#5280236 MSA to MSA, 
+#285267 MSA to cnty, total 5565503 from msas
+#301621 cnty to msa
+#91733 cnty to cnty. Sums to 5958857
+
+
 m2m['e_0910'].sum() # 5280236
 m2m['pred'].sum() #4731881
+
+#Check out cnty/noncnty flows
+predval.loc[msas].sum().sum() #5510155 from msas. This is only 99% of the total flows. Should be the same since we're using those to scale?
+predval.loc[msas,prlist].sum().sum() #And that includes 978 predicted from PR
+
+radmo.loc[msas].sum().sum() #9410673157. 99.9% of 9420000000, so it's not just misc numbers getting lost
+
+#Check out where things are getting lost
+check = totflows.loc[msas]
+check['id'] = check.index
+check['pred'] = check.apply(lambda x: predval.loc[x['id']].sum() , 1)
+check['ratio'] = check['pred'] / check['Exmpt_Num']
+check['resid'] = check['Exmpt_Num'] - check['pred'] 
+check.sort('resid', ascending = False).iloc[0:5][['resid']]
+
+#These are all the big MSAs - NYC, LA, Chicago, Dallas, DC, Miami, Houston, Riverside
+top10 = check.sort('resid', ascending = False).iloc[0:10].index
+radmo.loc[top10].sum().sum() / (10*10000000) # 97.5 percent
+radmo.loc[top10].apply(sum, 1) #93% for NY, shrinks from there
+
+#So the radiation model is especially prone to undercounting in really big MSAs. This accounts for the missing 1% of migrants
+#Would like to know better why this is... 
+#Maybe has to do with a transition to int and rounding down somewhere?
+
+#Back to checking pct from counties
+predval.loc[msas,msas].sum().sum() #4908460. That's somewhat bigger than 47, so there are about 176,579 migrants predicted flowing between MSAs that actually don't have flow.
+
+
+
+
 
 
 
@@ -140,6 +182,10 @@ plt.boxplot(boxes,0,'')
 plt.xticks(range(13),range(0,3250,250))
 plt.savefig('output/radiation/rad_resid_dist.pdf')
 plt.close()
+
+
+#Residuals by source community
+
 
 
 #Going to just add predicted values to the flows that had positive amounts. This will drop flows that 

@@ -7,6 +7,7 @@ import sys
 import networkx as nx
 import pandas as pd
 import matplotlib.pyplot as plt
+import re
 #import matplotlib.colors as colors
 #import matplotlib.cm as cmx
 #import pyproj
@@ -33,7 +34,7 @@ m2m['source'] = m2m['source'].apply(int).apply(str)
 m2m['target'] = m2m['target'].apply(int).apply(str)
 
 #Add communities to targets and sources
-comsnames = coms[['shortname','formalcom']]s
+comsnames = coms[['shortname','formalcom']]
 
 m2m = pd.merge(m2m, comsnames, left_on = 'source', right_index = True)
 m2m = pd.merge(m2m, comsnames, left_on = 'target', right_index = True,suffixes = ['_s','_t'])
@@ -43,28 +44,36 @@ msource = m2m.groupby(['source','formalcom_t']).aggregate(sum)
 msource['source'] = zip(*msource.index)[0]
 msource['com'] = zip(*msource.index)[1]
 
+totpopcom = coms.groupby('formalcom').agg(sum)
+
 top20 = m2m.groupby('source').agg(sum).sort('Exmpt_Num', ascending = False).iloc[0:20].index
 labels = ['Greater Texas','Upper Midwest','East-Central','West','East Coast','Mid-South']
 colorslist = ['red','blue','gray','yellow','green','purple']
-
-fig = plt.figure(figsize = [12,6])
-for i in range(8):
+msalist = range(6) + [11]
+fig = plt.figure(figsize = [12.5,6])
+for i in range(7):
     ax = fig.add_subplot(2,4,i+1)
-    ax.set_title(comsnames.loc[top20[i],'shortname'])
-    piedat = msource[msource['source'] == top20[i]]['Exmpt_Num']
+    q = msalist[i]
+    ax.set_title(comsnames.loc[top20[q],'shortname'])
+    piedat = msource[msource['source'] == top20[q]]['Exmpt_Num']
     laborder = zip(*piedat.index)[1]
     labshuf = [labels[j] for j in laborder]
     colorder = [colorslist[j] for j in laborder]
     
-    ax.pie(piedat, colors = colorder, labels = labshuf, labeldistance = 1.05)
-    
+    patches, texts = ax.pie(piedat, colors = colorder, labels = labshuf, labeldistance = 1.05)
+    for p in range(6):
+        texts[p].set_fontsize(7) 
+        
+ax = fig.add_subplot(2,4,8)
+ax.set_title("Total Population")
+piedat = totpopcom['pop']
+laborder = piedat.index
+labshuf = [labels[j] for j in laborder]
+colorder = [colorslist[j] for j in laborder]
+patches, texts = ax.pie(piedat, colors = colorder, labels = labshuf, labeldistance = 1.05)
+for p in range(6):
+    texts[p].set_fontsize(7) 
 plt.show()
 fig.savefig('output/piecharts.pdf')
-fig.close()
+plt.close()
     
-t1 = msource[msource['source'] == top20[0]]['Exmpt_Num']
-plt.pie(t1, colors = ['blue','green','red','yellow','orange','brown'])
-
-labshuf = [labels[i] for i in laborder]
-
-#Collapse by community of target
