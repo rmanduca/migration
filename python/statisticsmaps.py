@@ -94,32 +94,84 @@ for stat in ['degree','wdegree','closeness','flowcloseness','btwnness','flowbtwn
 
 #Plot statistics vs each other
 plt.plot(stats['pop'],stats['wdegree'], 'bo')
+plt.savefig('output/correlations/pop_wdegree.pdf')
+plt.close()
+
+plt.plot(stats['pop'],stats['wdegree'], 'bo')
+plt.yscale('log')
+plt.xscale('log')
+plt.savefig('output/correlations/pop_wdegree_log.pdf')
+plt.close()
 
 plt.figure()
-plt.plot(log(stats['pop']),stats['flowcloseness'], 'bo')
+plt.plot((stats['pop']),stats['flowcloseness'], 'bo')
+plt.savefig('output/correlations/pop_flowclose.pdf')
+plt.close()
 
 plt.figure()
-plt.plot(log(stats['wdegree']),stats['flowcloseness'], 'bo')
+plt.plot((stats['pop']),stats['flowcloseness'], 'bo')
+plt.yscale('log')
+plt.xscale('log')
+plt.savefig('output/correlations/pop_flowclose_log.pdf')
+plt.close()
 
 plt.figure()
 plt.plot(stats['pop'],stats['flowbtwnness'], 'bo')
-
-plt.figure()
-plt.plot(log(stats['pop']),log(stats['flowbtwnness']), 'bo')
-
-plt.figure()
-plt.plot(stats['flowcloseness'],log(stats['flowbtwnness']), 'bo')
-plt.axis([0,600,-15,0])
-plt.savefig('output/correlations/closebtwn.jpeg')
+plt.savefig('output/correlations/pop_flowbtwn.pdf')
 plt.close()
 
 plt.figure()
-plt.plot(stats['flowcloseness'],(stats['flowbtwnness']), 'bo')
-plt.savefig('output/correlations/closebtwn_lin.jpeg')
+plt.plot(stats['pop'],stats['flowbtwnness'], 'bo')
+plt.yscale('log')
+plt.xscale('log')
+plt.savefig('output/correlations/pop_flowbtwn_log.pdf')
 plt.close()
 
 plt.figure()
-plt.plot(log(stats['wdegree']),log(stats['flowbtwnness']), 'bo')
+plt.plot(stats[stats['flowbtwnness']>10**(-15)]['pop'],stats[stats['flowbtwnness']>10**(-15)]['flowbtwnness'], 'bo')
+plt.yscale('log')
+plt.xscale('log')
+plt.savefig('output/correlations/pop_flowbtwn_log_dropoutlier.pdf')
+plt.close()
+
+plt.figure()
+plt.plot(stats['flowcloseness'],stats['flowbtwnness'], 'bo')
+plt.savefig('output/correlations/close_btwn.pdf')
+plt.close()
+
+plt.figure()
+plt.plot(stats['flowcloseness'],stats['flowbtwnness'], 'bo')
+plt.yscale('log')
+plt.xscale('log')
+plt.savefig('output/correlations/close_btwn_log.pdf')
+plt.close()
+
+plt.figure()
+plt.plot(stats[stats['flowbtwnness']>10**(-15)]['flowcloseness'],stats[stats['flowbtwnness']>10**(-15)]['flowbtwnness'], 'bo')
+plt.yscale('log')
+plt.xscale('log')
+plt.savefig('output/correlations/close_btwn_log_dropoutlier.pdf')
+plt.close()
+
+plt.figure()
+plt.plot((stats['wdegree']),(stats['flowbtwnness']), 'bo')
+plt.savefig('output/correlations/wdeg_btwn.pdf')
+plt.close()
+
+plt.figure()
+plt.plot((stats['wdegree']),(stats['flowbtwnness']), 'bo')
+plt.yscale('log')
+plt.xscale('log')
+plt.savefig('output/correlations/wdeg_btwn_log.pdf')
+plt.close()
+
+plt.figure()
+plt.plot(stats[stats['flowbtwnness']>10**(-15)]['wdegree'],stats[stats['flowbtwnness']>10**(-15)]['flowbtwnness'], 'bo')
+plt.yscale('log')
+plt.xscale('log')
+plt.savefig('output/correlations/wdeg_btwn_log_dropoutlier.pdf')
+plt.close()
+
 
 
 

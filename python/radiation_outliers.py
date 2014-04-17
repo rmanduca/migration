@@ -11,6 +11,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import gaussian_kde
 import re
+sys.path.append('/Users/Eyota/projects/thesis/code/python/modules')
+from drawnetworks import netplot
+
 
 os.chdir("/Users/Eyota/projects/thesis")
 
@@ -40,7 +43,7 @@ for i in msas:
     print i
     predval.loc[i] = radmo.loc[i].apply(lambda x: x / 10000000 * totflows.loc[i,'Exmpt_Num'])
     
-predval.to_csv('output/predval_0910.csv')
+predval[msas].to_csv('output/predval_0910.csv')
 
 #Bring in m2m_allyears 
 m2m = pd.io.parsers.read_csv('output/m2m_allyrs.csv')
@@ -132,6 +135,15 @@ m2m = pd.merge(m2m, shortnames, left_on = 'source', right_index = True)
 m2m = pd.merge(m2m, shortnames, left_on = 'target', right_index = True,suffixes = ['_s','_t'])
 
 
+#Add in formal communities
+coms = pd.io.parsers.read_csv('output/comsformal.csv')
+coms['id'] = coms['id'].apply(str)
+coms.set_index('id',inplace = True)
+comsmerge = coms['formalcom']
+
+m2m = pd.merge(m2m, pd.DataFrame(comsmerge), left_on = 'source', right_index = True)
+m2m = pd.merge(m2m, pd.DataFrame(comsmerge), left_on = 'target', right_index = True,suffixes = ['_s','_t'])
+
 
 #Check out top 20
 m2m.sort('e_0910',ascending = False)[['shortname_s','shortname_t','pred','e_0910','pop_s','pop_t','dist']].iloc[0:30].to_csv('output/radiation/top_actual.csv')
@@ -146,6 +158,13 @@ m2m.sort('pct',ascending = True)[['shortname_s','shortname_t','pred','e_0910','p
 plt.figure()
 plt.plot(m2m['e_0910'],m2m['pred'], 'bo')
 plt.savefig('output/radiation/rad_predvsactual.pdf')
+plt.close()
+
+plt.figure()
+plt.plot(m2m['e_0910'],m2m['pred'], 'bo')
+plt.yscale('log')
+plt.xscale('log')
+plt.savefig('output/radiation/rad_predvsactual_log.pdf')
 plt.close()
 
 
@@ -185,10 +204,92 @@ plt.close()
 
 
 #Residuals by source community
+comlabels = ['Greater Texas','Upper Midwest','East-Central','West','East Coast','Mid-South']
 
+boxes = [] 
+for i in range(6):
+    boxes.append(m2m[m2m['formalcom_s'] == i]['resid'])
 
+plt.figure()
+plt.boxplot(boxes,0,'')
+plt.xticks(range(7),['']+comlabels)
+plt.savefig('output/radiation/rad_com_s_dist.pdf')
+plt.close()
+
+boxes = [] 
+for i in range(6):
+    boxes.append(m2m[m2m['formalcom_t'] == i]['resid'])
+
+plt.figure()
+plt.boxplot(boxes,0,'')
+plt.xticks(range(7),['']+comlabels)
+plt.savefig('output/radiation/rad_com_t_dist.pdf')
+plt.close()
 
 #Going to just add predicted values to the flows that had positive amounts. This will drop flows that 
 #actually registered zeros, so it will bias the results somewhat. But I'm hoping that the flows with 
 #material predicted values will all have at least 
 #The mean flo
+
+
+
+######Prep for maps#######
+year = '0910'
+width = 4700000
+height = 3100000
+
+#Import 0910 data
+metros, mg, nodedata = importnetwork(year)
+
+#String FIPS code
+metros['id'] = metros['MSACode'].apply(str)
+
+#Draw setup
+#Take out AK/HI for now for drawing
+akhi = metros[(metros['lon'] > -60) | (metros['lon'] <-125)].index
+mgdraw = mg.copy()
+mgdraw.remove_nodes_from(akhi)
+
+#Projection
+project = pyproj.Proj('+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=38.5 +lon_0=-97 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs')
+t = project(metros['lon'],metros['lat'])
+pos = dict(zip(metros.index,zip(t[0]+width / 2,t[1] + height / 2)))
+
+colormap = cm = plt.get_cmap('Spectral') 
+#######Done with prep########
+
+#Maps of total residuals by metro
+sresid = m2m[['source','resid']].groupby('source').agg('sum').sort('resid',ascending = False)
+tresid = m2m[['target','resid']].groupby('target').agg('sum').sort('resid',ascending = False)
+sres = pd.merge(sresid, metros, left_index = True, right_on = 'id')
+tres = pd.merge(tresid, metros, left_index = True, right_on = 'id')
+
+netplot('output/radiation/metro_s_resid.jpeg',width, height, mgdraw, pos, with_labels = False, 
+    nodelist = list(sres.sort('pop').index), 
+    node_size = sqrt(sres.sort(['pop'])['pop']), 
+    node_color = sres.sort(['pop'])['resid'],cmap = colormap,
+    alpha = .7, linewidths = 0.5, width = 0)
+    
+netplot('output/radiation/metro_t_resid.jpeg',width, height, mgdraw, pos, with_labels = False, 
+    nodelist = list(tres.sort('pop').index), 
+    node_size = sqrt(tres.sort(['pop'])['pop']), 
+    node_color = tres.sort(['pop'])['resid'],
+    alpha = .7, linewidths = 0.5, width = 0)
+    
+#Maps of migration efficency by metro = source
+m2m[['source','e_0910']].groupby('source').agg(sum).sort('e_0910',ascending = False).iloc[0:10]
+m2m[['target','e_0910']].groupby('target').agg(sum).sort('e_0910',ascending = False).iloc[0:10]
+
+outmig = m2m[['source','e_0910']].groupby('source').agg(sum)
+inmig = m2m[['target','e_0910']].groupby('target').agg(sum)
+
+inout = pd.merge(metros, outmig, left_on = 'id', right_index = True)
+inout = pd.merge(inout, inmig, left_on = 'id', right_index = True,suffixes = ['_s','_t'])
+inout['net'] = inout['e_0910_t'] - inout['e_0910_s']
+inout['effic'] = inout['net'] / (inout['e_0910_s'] + inout['e_0910_t'])
+
+netplot('output/radiation/metro_effic.jpeg',width, height, mgdraw, pos, with_labels = False, 
+    nodelist = list(inout.sort('pop').index), 
+    node_size = sqrt(inout.sort(['pop'])['pop']), 
+    node_color = inout.sort(['pop'])['effic'],cmap = colormap,
+    alpha = .7, linewidths = 0.5, width = 0)
