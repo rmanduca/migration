@@ -11,6 +11,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import pyproj
 import mpl_toolkits.basemap as bm
+import re
 
 #New Modules
 sys.path.append('/Users/Eyota/projects/thesis/code/python/modules')
@@ -62,6 +63,7 @@ stats = dict2column(stats, eigenvc, 'eigenvc')
 weigenvc = we.eigenvector_centrality(mg, weight = 'exmptgross')
 stats = dict2column(stats, weigenvc, 'weigenvc')
 
+stats['shortname'] = stats['MSAName'].apply(lambda x: re.search('^.*?[-,]',x).group(0)[:-1] + re.search(', [A-Z][A-Z]',x).group(0))
 
 
 
@@ -83,97 +85,174 @@ pos = dict(zip(statsdraw.index,zip(t[0]+width / 2,t[1] + height / 2)))
 
 #Loop through statistics
 for stat in ['degree','wdegree','closeness','flowcloseness','btwnness','flowbtwnness']:
-    netplot('output/maps_%s.jpeg' %stat,width, height,mgdraw, pos, with_labels = False, 
+    netplot('output/netstats/maps_%s_%s.jpeg' %(stat,year),width, height,mgdraw, pos, with_labels = False, 
     nodelist = list(statsdraw.sort(['pop']).index), 
     node_size = sqrt(statsdraw.sort(['pop'])['pop']), 
     node_color = statsdraw.sort(['pop'])[stat],
     alpha = .7, linewidths = 0.5, width = 0)
+    
+    stats[['shortname','pop',stat]].sort(stat, ascending = False).iloc[0:20].to_csv('output/netstats/top20_%s_%s.csv' %(stat, year))
 
 
 
 
 #Plot statistics vs each other
 plt.plot(stats['pop'],stats['wdegree'], 'bo')
-plt.savefig('output/correlations/pop_wdegree.pdf')
+plt.xlabel('Population')
+plt.ylabel('Weighted Degree')
+plt.savefig('output/correlations/pop_wdegree_%s.pdf' %year)
+plt.close()
+
+plt.plot(stats['degree'],stats['wdegree'], 'bo')
+plt.xlabel('Unweighted Degree')
+plt.ylabel('Weighted Degree')
+'''
+tolabel = stats.loc([[ (metros['incom_exmpt']>60000) |( metros['wexmpt'] > 20000)]
+#.sort('wexmpt', ascending = False).iloc[0:10]
+for label, x, y in zip(tolabel['shortname'],tolabel['incom_exmpt'],tolabel['wexmpt']):
+     plt.annotate(
+        label, 
+        xy = (x, y))
+'''
+plt.savefig('output/correlations/degree_wdegree_%s.pdf' %year)
+plt.close()
+
+plt.plot(stats['degree'],stats['wdegree'], 'bo')
+plt.xlabel('Unweighted Degree')
+plt.ylabel('Weighted Degree')
+plt.yscale('log')
+plt.xscale('log')
+plt.savefig('output/correlations/degree_wdegree_log_%s.pdf' %year)
+plt.close()
+
+
+
+plt.plot(stats['pop'],(1.0*stats['wdegree']/stats['pop']), 'bo')
+plt.xscale('log')
+plt.xlabel('Population')
+plt.ylabel('Weighted Degree per Capita')
+plt.savefig('output/correlations/pop_migrate_log_%s.pdf' %year)
 plt.close()
 
 plt.plot(stats['pop'],stats['wdegree'], 'bo')
 plt.yscale('log')
 plt.xscale('log')
-plt.savefig('output/correlations/pop_wdegree_log.pdf')
+plt.xlabel('Population')
+plt.ylabel('Weighted Degree')
+plt.savefig('output/correlations/pop_wdegree_log_%s.pdf' %year)
 plt.close()
 
 plt.figure()
 plt.plot((stats['pop']),stats['flowcloseness'], 'bo')
-plt.savefig('output/correlations/pop_flowclose.pdf')
+plt.xlabel('Population')
+plt.ylabel('Closeness Centrality')
+plt.savefig('output/correlations/pop_flowclose_%s.pdf' %year)
 plt.close()
 
 plt.figure()
 plt.plot((stats['pop']),stats['flowcloseness'], 'bo')
 plt.yscale('log')
 plt.xscale('log')
-plt.savefig('output/correlations/pop_flowclose_log.pdf')
+plt.xlabel('Population')
+plt.ylabel('Closeness Centrality')
+plt.savefig('output/correlations/pop_flowclose_log_%s.pdf' %year)
 plt.close()
 
 plt.figure()
 plt.plot(stats['pop'],stats['flowbtwnness'], 'bo')
-plt.savefig('output/correlations/pop_flowbtwn.pdf')
+plt.xlabel('Population')
+plt.ylabel('Betweenness Centrality')
+plt.savefig('output/correlations/pop_flowbtwn_%s.pdf' %year)
 plt.close()
 
 plt.figure()
 plt.plot(stats['pop'],stats['flowbtwnness'], 'bo')
 plt.yscale('log')
 plt.xscale('log')
-plt.savefig('output/correlations/pop_flowbtwn_log.pdf')
+plt.xlabel('Population')
+plt.ylabel('Betweenness Centrality')
+plt.savefig('output/correlations/pop_flowbtwn_log_%s.pdf' %year)
 plt.close()
 
 plt.figure()
 plt.plot(stats[stats['flowbtwnness']>10**(-15)]['pop'],stats[stats['flowbtwnness']>10**(-15)]['flowbtwnness'], 'bo')
 plt.yscale('log')
 plt.xscale('log')
-plt.savefig('output/correlations/pop_flowbtwn_log_dropoutlier.pdf')
+plt.xlabel('Population')
+plt.ylabel('Betweenness Centrality')
+plt.savefig('output/correlations/pop_flowbtwn_log_dropoutlier_%s.pdf' %year)
 plt.close()
 
 plt.figure()
 plt.plot(stats['flowcloseness'],stats['flowbtwnness'], 'bo')
-plt.savefig('output/correlations/close_btwn.pdf')
+plt.xlabel('Closeness Centrality')
+plt.ylabel('Betweenness Centrality')
+plt.savefig('output/correlations/close_btwn_%s.pdf' %year)
 plt.close()
 
 plt.figure()
 plt.plot(stats['flowcloseness'],stats['flowbtwnness'], 'bo')
+plt.xlabel('Closeness Centrality')
+plt.ylabel('Betweenness Centrality')
 plt.yscale('log')
 plt.xscale('log')
-plt.savefig('output/correlations/close_btwn_log.pdf')
+plt.savefig('output/correlations/close_btwn_log_%s.pdf' %year)
 plt.close()
 
 plt.figure()
-plt.plot(stats[stats['flowbtwnness']>10**(-15)]['flowcloseness'],stats[stats['flowbtwnness']>10**(-15)]['flowbtwnness'], 'bo')
+plt.plot(stats[stats['flowbtwnness']>10**(-15)]['flowbtwnness'],stats[stats['flowbtwnness']>10**(-15)]['flowcloseness'], 'bo')
 plt.yscale('log')
 plt.xscale('log')
-plt.savefig('output/correlations/close_btwn_log_dropoutlier.pdf')
+plt.ylabel('Closeness Centrality')
+plt.xlabel('Betweenness Centrality')
+plt.savefig('output/correlations/close_btwn_log_dropoutlier_%s.pdf' %year)
 plt.close()
 
 plt.figure()
 plt.plot((stats['wdegree']),(stats['flowbtwnness']), 'bo')
-plt.savefig('output/correlations/wdeg_btwn.pdf')
+plt.xlabel('Weighted Degree')
+plt.ylabel('Betweenness Centrality')
+plt.savefig('output/correlations/wdeg_btwn_%s.pdf' %year)
 plt.close()
 
 plt.figure()
 plt.plot((stats['wdegree']),(stats['flowbtwnness']), 'bo')
+plt.xlabel('Weighted Degree')
+plt.ylabel('Betweenness Centrality')
 plt.yscale('log')
 plt.xscale('log')
-plt.savefig('output/correlations/wdeg_btwn_log.pdf')
+plt.savefig('output/correlations/wdeg_btwn_log_%s.pdf' %year)
 plt.close()
 
 plt.figure()
 plt.plot(stats[stats['flowbtwnness']>10**(-15)]['wdegree'],stats[stats['flowbtwnness']>10**(-15)]['flowbtwnness'], 'bo')
 plt.yscale('log')
 plt.xscale('log')
-plt.savefig('output/correlations/wdeg_btwn_log_dropoutlier.pdf')
+plt.xlabel('Weighted Degree')
+plt.ylabel('Betweenness Centrality')
+plt.savefig('output/correlations/wdeg_btwn_log_dropoutlier_%s.pdf' %year)
 plt.close()
 
 
+#Box plots of migrants by pop
+#Residuals by source community
+labels = ['0-50k','50-100k','100-500k','500k-1 mil','1-5 mil','>5 mil']
+bounds = [(0,50000),(50000,100000),(100000,500000),(500000,1000000),(1000000,5000000),(5000000,100000000)]
 
+boxstats = 1.0*stats['wdegree']  /stats['pop']
+boxes = [] 
+for i in range(6):
+    boxes.append(boxstats[(stats['pop'] > bounds[i][0]) & (stats['pop'] <= bounds[i][1])])
+
+plt.figure()
+plt.boxplot(boxes,0)
+plt.xticks(range(7),['']+labels)
+plt.xlabel('Population')
+plt.ylabel('Weighted Degree')
+plt.savefig('output/netstats/migrate_pop.pdf')
+plt.close()
+
+#Do
 
 #Try drawing - degree
 
