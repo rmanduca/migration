@@ -62,8 +62,10 @@ comnet.add_nodes_from(nodedata)
 
 comsdraw = coms[(metros['lon'] < -60) & (metros['lon'] >-125)]
 comlist = []
+modularities = []
 for i in range(100):
     partition = cm.best_partition(mg)
+    modularities.append(cm.modularity(partition, mg))
     #I think it's ok to use the full network including AKHI
     comsdraw = dict2column(comsdraw, partition,'com%s'%i)
     #'part%s' %i)
@@ -86,6 +88,9 @@ comdf['cnt'] = 1
 comcol = comdf.groupby([0,1]).agg(sum)
 comcol = comcol.sort(['cnt'])
 comedges = zip(zip(*comcol.index)[0],zip(*comcol.index)[1],comcol['cnt'])
+
+moddf = pd.DataFrame(data = modularities)
+moddf.to_csv('output/commaps/modularities.csv')
 
 comnet.add_weighted_edges_from(comedges)
 comnetdraw = comnet
@@ -113,6 +118,26 @@ nx.draw(comnetdraw, pos,with_labels = False,alpha = .1, linewidths = 0,
         nodelist = list(comsdraw.sort(['pop']).index),
         node_size = sqrt(comsdraw.sort(['pop'])['pop']),
         node_color = 'gray',
+        edgelist = elist)
+#plt.axis([-2300000,2100000, -1800000, 1500000])
+
+
+plt.savefig('output/communities_95_%s_states_nodes.jpg' %year)
+plt.close()
+                
+
+#Take out nodes  
+plt.figure(figsize = (15,11))
+m = bm.Basemap(width = width, height = height, projection = 'aea', resolution = 'l', lat_1 = 29.5, lat_2 = 45.5, lat_0 = 38.5, lon_0 = -97)
+m.drawcountries()
+m.drawcoastlines()
+m.drawstates()
+plt.show()    
+
+nx.draw_networkx_edges(comnetdraw, pos,with_labels = False,alpha = .1, linewidths = 0, 
+        #nodelist = list(comsdraw.sort(['pop']).index),
+        #node_size = sqrt(comsdraw.sort(['pop'])['pop']),
+        #node_color = 'gray',
         edgelist = elist)
 #plt.axis([-2300000,2100000, -1800000, 1500000])
 
@@ -168,7 +193,7 @@ comcol.to_csv('output/comcol.csv')
 #Then try to pick one set of communities
 #The best one is picked in 6 of the 10 times I try running it. That's saved as 'output/comsformal.csv'
 
-for i in [22]:    
+for i in [23]:    
     p2 = cm.best_partition(comnet)
     comsdraw2 = dict2column(comsdraw, p2,'formalcom')
     coms2 = dict2column(coms, p2,'formalcom')
@@ -177,5 +202,5 @@ for i in [22]:
         nodelist = list(comsdraw2.sort(['pop']).index),
         node_size = sqrt(comsdraw2.sort(['pop'])['pop']),
         node_color = comsdraw2.sort(['pop'])['formalcom'])
-        
+       
       #  coms2.to_csv('output/comsformal.csv')
