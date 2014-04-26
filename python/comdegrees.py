@@ -47,6 +47,7 @@ comsform = comsform[['pop','lat','lon','MSAName','formalcom']]
 for i in range(6):
     comsform['com%sdeg' %i] = 0
     
+#Populate with degree in each community
 for i in mg.nodes():
     for j in mg[i].keys():
         com = comsform.loc[j,'formalcom']

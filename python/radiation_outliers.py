@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 #import pyproj
 import numpy as np
 from scipy.stats import gaussian_kde
+from scipy.stats.stats import pearsonr
 import re
 sys.path.append('/Users/Eyota/projects/thesis/code/python/modules')
 from drawnetworks import netplot
@@ -157,6 +158,8 @@ m2m.sort('pct',ascending = True)[['shortname_s','shortname_t','pred','e_0910','p
 #Plot predicted vs actual
 plt.figure()
 plt.plot(m2m['e_0910'],m2m['pred'], 'bo')
+plt.xlabel('Actual Value')
+plt.ylabel('Predicted Value')
 plt.savefig('output/radiation/rad_predvsactual.pdf')
 plt.close()
 
@@ -164,8 +167,11 @@ plt.figure()
 plt.plot(m2m['e_0910'],m2m['pred'], 'bo')
 plt.yscale('log')
 plt.xscale('log')
+plt.xlabel('Actual Value')
+plt.ylabel('Predicted Value')
 plt.savefig('output/radiation/rad_predvsactual_log.pdf')
 plt.close()
+pearsonr(m2m['e_0910'],m2m['pred'])
 
 
 #Plot residuals vs pop product (?)
@@ -186,6 +192,23 @@ plt.xticks(range(8),["",'10^9','10^10','10^11','10^12','10^13','10^14','10^15'])
 plt.savefig('output/radiation/rad_resid_popprod.pdf')
 plt.close()
 
+#Plot residuals vs pop source
+m2m['popsrcgroup'] = m2m['pplog'].apply(ceil)
+
+#Check out number of cases
+m2m[['ppgroup','e_0910']].groupby('ppgroup').agg(len)
+
+boxes = []
+for i in range(9,16):
+    boxes.append(m2m[m2m['ppgroup']==i]['resid'])
+
+plt.figure()
+plt.boxplot(boxes,0,'')
+plt.xticks(range(8),["",'10^9','10^10','10^11','10^12','10^13','10^14','10^15'])
+plt.savefig('output/radiation/rad_resid_popprod.pdf')
+plt.close()
+
+
 
 #Plot residuals vs distance
 #250km boxes up to 3000
@@ -199,6 +222,8 @@ for i in range(250,3250,250):
 plt.figure()
 plt.boxplot(boxes,0,'')
 plt.xticks(range(13),range(0,3250,250))
+plt.xlabel('Distance Between Origin and Destination (km)')
+plt.ylabel('Radiation Model Residual')
 plt.savefig('output/radiation/rad_resid_dist.pdf')
 plt.close()
 

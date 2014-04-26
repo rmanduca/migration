@@ -7,6 +7,8 @@ import pyproj
 import random as rd
 import pylab as pl
 import re
+from scipy.stats.stats import pearsonr
+
 
 from numpy import sqrt, round
 #import community as cm
@@ -35,6 +37,8 @@ comweights.set_index(['0','1'], inplace = True)
 comsform = pd.io.parsers.read_csv('output/comsformal.csv')
 comsform.set_index('id',inplace = True)
 comsform = comsform[['pop','lat','lon','MSAName','formalcom']]
+
+
 
 #Draw setup
 #Take out AK/HI for now for drawing
@@ -101,7 +105,7 @@ for i in mg.nodes():
         
 comsform['wincomdeg'] = comsform.apply(lambda x: x['com%sdeg' % x['formalcom']], axis = 1)
 
-#Percentage of community's degree going through 
+#Percentage of community's degree going through given cities
 totalcommig = comsform.groupby('formalcom').aggregate(sum)
 comsform['commigpct'] = comsform.apply(lambda x: x['com%sdeg' % x['formalcom']] / totalcommig.loc[x['formalcom'],'com%sdeg' %x['formalcom']], axis = 1)
 
@@ -121,7 +125,14 @@ def particip(x):
 
 comsform['partcoef'] = comsform.apply(particip, axis = 1)
 
+#Percentage of inter-comm migrants going through xyz city
+totmig = comsform['wdeg'].sum()
+samecom = 0
+for i in range(6): 
+    samecom += totalcommig.loc[i, 'com%sdeg' %i]
+intercom = totmig - samecom
 
+comsform['intercompct'] = comsform.apply(lambda x: (x['wdeg'] - x['wincomdeg'])/intercom, axis = 1)
 
 #avg outside form com
 comsform['outformcom'] = round(1.0* comsform['wform'] / comsform['wdeg'],2)
@@ -129,14 +140,26 @@ comsform['outformcom'] = round(1.0* comsform['wform'] / comsform['wdeg'],2)
 #within comm degree
 comsform['incom_exmpt'] = comsform['wdeg'] - comsform['wexmpt']
 
+#Churnperpop
+comsform['churnrate'] = 1.0*comsform['wdeg'] / comsform['pop']
+
 #Shortnames
 comsform['shortname'] = comsform['MSAName'].apply(lambda x: re.search('^.*?[-,]',x).group(0)[:-1] + re.search(', [A-Z][A-Z]',x).group(0))
+comsform['state'] = comsform['shortname'].apply(lambda x: re.search(', [A-Z][A-Z]',x).group(0)[-2:])
+
+#Other regionalizations based on states
+othercoms = pd.io.parsers.read_csv('data/othercommunities.csv')
+comsform = pd.merge(comsform, othercoms[['Abbreviation','Court_dist','Census']], how = 'left',left_on = 'state', right_on = 'Abbreviation')
+
+#Export comsform data
+comsform.to_csv('output/community_statistics.csv')
+
 
 
 metrosdraw = comsform.drop(akhi)
 
 #maps
-for stat in ['wexmpt','outcom','wdeg', 'wform','outformcom','incom_exmpt','pop','commigpct','wincomdeg', 'partcoef','comzscore']:
+for stat in ['churnrate','wexmpt','outcom','wdeg', 'wform','outformcom','incom_exmpt','pop','commigpct','wincomdeg', 'partcoef','comzscore']:
     netplot('output/maps_%s.jpeg' %stat,width, height,mgdraw, pos, with_labels = False, 
     nodelist = list(metrosdraw.sort(['pop']).index), 
     node_size = sqrt(metrosdraw.sort(['pop'])['pop']), 
@@ -169,7 +192,7 @@ plt.yscale('log')
 plt.xscale('log')
 plt.xlabel('Total Weighted Degree')
 plt.ylabel('Extra-community Weighted Degree')
-plt.savefig('output/correlations/wdegwexmpt.jpeg')
+plt.savefig('output/correlations/wdegwexmpt.pdf')
 plt.close()
 
 plt.figure()
@@ -178,8 +201,66 @@ plt.yscale('log')
 plt.xscale('log')
 plt.xlabel('Population')
 plt.ylabel('Extra-community Weighted Degree')
-plt.savefig('output/correlations/popwexmpt.jpeg')
+plt.savefig('output/correlations/popwexmpt.pdf')
 plt.close()
+
+#Pop vs churnrate
+plt.figure()
+plt.plot(comsform['pop'],comsform['churnrate'], 'bo')
+plt.yscale('log')
+plt.xscale('log')
+plt.xlabel('Population')
+plt.ylabel('Extra-community Weighted Degree')
+plt.savefig('output/correlations/popchurn.pdf')
+plt.close()
+
+#Churnrate by region
+comlabels = ['Greater Texas','Upper Midwest','East-Central','West','East Coast','Mid-South']
+boxes = []
+for i in range(6):
+    boxes.append(comsform[comsform['formalcom'] == i]['churnrate'])
+
+plt.figure(figsize = (12,6))
+plt.boxplot(boxes,0,'')
+plt.xticks(range(7),['']+comlabels)
+plt.ylabel('Migration Churn Rate')
+plt.savefig('output/churnratesregions.pdf')
+plt.close()
+
+#Churnrate by State in mean order
+statechurn = comsform.groupby('state')['churnrate'].agg('mean')
+statechurn.sort('churnrate',ascending = False)
+states = list(statechurn.index)
+
+boxes = []
+for i in range(len(states)):
+    boxes.append(comsform[comsform['state'] == states[i]]['churnrate'])
+
+plt.figure(figsize = (20,6))
+plt.boxplot(boxes,0,'')
+plt.xticks(range(52),['']+states)
+plt.ylabel('Migration Churn Rate')
+plt.savefig('output/churnratesstates.pdf')
+plt.close()
+
+#Churnrate by census Region
+regchurn = comsform.groupby('Census')['churnrate'].agg('mean')
+regchurn.sort('churnrate',ascending = False)
+reg = list(regchurn.index)
+
+boxes = []
+for i in range(len(reg)):
+    boxes.append(comsform[comsform['Census'] == reg[i]]['churnrate'])
+
+plt.figure(figsize = (12,6))
+plt.boxplot(boxes,0,'')
+plt.xticks(range(10),['']+reg)
+plt.ylabel('Migration Churn Rate')
+plt.savefig('output/churnratesregions.pdf')
+plt.close()
+
+regions
+
 
 plt.figure()
 plt.plot(comsform['flowcloseness'],comsform['wexmpt'], 'bo')
@@ -187,7 +268,7 @@ plt.yscale('log')
 plt.xscale('log')
 plt.xlabel('Closeness Centrality')
 plt.ylabel('Extra-community Weighted Degree')
-plt.savefig('output/correlations/flowclosewexmpt.jpeg')
+plt.savefig('output/correlations/flowclosewexmpt.pdf')
 plt.close()
 
 plt.figure()
@@ -196,24 +277,26 @@ plt.yscale('log')
 plt.xscale('log')
 plt.xlabel('Betweenness Centrality')
 plt.ylabel('Extra-community Weighted Degree')
-plt.savefig('output/correlations/flowbtwnwexmpt.jpeg')
+plt.savefig('output/correlations/flowbtwnwexmpt.pdf')
 plt.close()
 
 plt.figure()
 plt.plot(comsform[comsform['flowbtwnness']>10**(-15)]['flowbtwnness'],comsform[comsform['flowbtwnness']>10**(-15)]['wexmpt'], 'bo')
 plt.yscale('log')
 plt.xscale('log')
-plt.ylabel('Closeness Centrality')
+plt.ylabel('Extra-community Degree')
 plt.xlabel('Betweenness Centrality')
-plt.savefig('output/correlations/close_btwn_log_dropoutlier_%s.pdf' %year)
+plt.savefig('output/correlations/btwn_wexmpt_log_dropoutlier_%s.pdf' %year)
 plt.close()
+pearsonr(comsform['flowbtwnness'],comsform['wexmpt']) #0.9415 correlation
+
 
 plt.figure()
 plt.plot(comsform['wdeg'],comsform['outcom'], 'bo')
 #plt.yscale('log')
 plt.xscale('log')
 plt.xlabel('Total Weighted Degree')
-plt.ylabel('Weighted Degree Outside Formal Community')
+plt.ylabel('Percentage of Weighted Degree Outside Formal Community')
 plt.savefig('output/correlations/wdegoutcom.jpeg')
 plt.close()
 
@@ -261,27 +344,118 @@ plt.close()
 #plt.xscale('log')
 
 
-#Plots of ranked distributions of within com degree 
+#Plots of ranked distributions of within com degree by community - all look basically the same.
+labels = ["Greater Texas",'Upper Midwest','East Central','West','East Coast','Mid-South']
 plt.figure()
 for com in range(6):
-    plt.plot(comsform[comsform['formalcom'] == com].sort('commigpct', ascending = False)['commigpct'])
+    plt.plot(comsform[comsform['formalcom'] == com].sort('commigpct', ascending = False).iloc[0:15]['commigpct'], 'o-',label = labels[com])
+    print comsform[comsform['formalcom'] == com].sort('commigpct', ascending = False).iloc[0:5]['commigpct'].sum()
+plt.legend()
+plt.xlabel('MSA Rank')
+plt.ylabel('Percent of Total Within-Community Degree')
+plt.savefig('output/correlations/commigpct_rank.pdf')
+plt.close()
+#plt.xscale('log')
+
+#Extra-com vs intra-com
+plt.figure()
+plt.plot(comsform['wincomdeg'],comsform['wexmpt'], 'bo')
+plt.yscale('log')
+plt.xscale('log')
+plt.savefig('output/correlations/wincomdeg_wexmpt.pdf')
+pearsonr(comsform['wincomdeg'],comsform['wexmpt']) #0.81
+plt.close()
+
+plt.figure()
+plt.plot(comsform['commigpct'],comsform['wexmpt'], 'bo')
+plt.yscale('log')
+plt.xscale('log')
+plt.savefig('output/correlations/commigpct_wexmpt.pdf')
+plt.close()
+pearsonr(comsform['commigpct'],comsform['wexmpt']) #0.807
+
+
+#Intra-com pct vs Participation
+plt.figure()
+plt.plot(comsform['partcoef'],comsform['commigpct'], 'bo')
+plt.xlabel('Participation Coefficient')
+plt.ylabel('Within-Community Percentage')
+plt.savefig('output/correlations/particip_commigpct.pdf')
+plt.close()
 
 plt.plot(comsform.sort('commigpct', ascending = False)['commigpct'])
+plt.close()
 
-
-
-#Participation vs Degree
+#Participation vs Intra-community Degree
 
 plt.figure()
 plt.plot(comsform['partcoef'],comsform['comzscore'], 'bo')
 plt.xlabel('Participation Coefficient')
 plt.ylabel('Normalized Within-Community Degree')
-plt.savefig('output/correlations/particip_wcdeg.jpeg')
+plt.savefig('output/correlations/particip_wcdeg.pdf')
 plt.close()
+
+#Intra-com vs betweenness
+plt.figure()
+plt.plot(comsform['commigpct'],comsform['flowbtwnness'], 'bo')
+plt.xlabel('Percentage of Within-Community Migrants')
+plt.ylabel('Betweenness Centrality')
+plt.savefig('output/correlations/commigpct_flowbtwn.pdf')
+plt.close()
+pearsonr(comsform['commigpct'],comsform['flowbtwnness']) #0.87
+
+#Intra-com vs closeness
+plt.figure()
+plt.plot(comsform['commigpct'],comsform['flowcloseness'], 'bo')
+plt.xlabel('Percentage of Within-Community Migrants')
+plt.ylabel('Closeness Centrality')
+plt.yscale('log')
+#plt.xscale('log')
+plt.savefig('output/correlations/commigpct_flowbtwn.pdf')
+plt.close()
+pearsonr(comsform['commigpct'],comsform['flowbtwnness']) #0.87
+
+
+
+
+#Participation versus betweenness
+plt.figure()
+plt.plot(comsform['partcoef'],comsform['flowbtwnness'], 'bo')
+plt.xlabel('Participation Coefficient')
+plt.ylabel('Betweenness Centrality')
+plt.savefig('output/correlations/particip_flowbtwn.pdf')
+plt.close()
+pearsonr(comsform['partcoef'],comsform['flowbtwnness']) #0.566
+
+#Participation vs extra com degree
+plt.figure()
+plt.plot(comsform['partcoef'],comsform['wexmpt'], 'bo')
+plt.xlabel('Participation Coefficient')
+plt.ylabel('Extra-Community Degree')
+plt.yscale('log')
+plt.savefig('output/correlations/particip_wexmpt.pdf')
+plt.close()
+pearsonr(comsform['partcoef'],comsform['wexmpt']) #0.49
+
+comsform.sort('wexmpt',ascending = False)[['shortname','partcoef']].iloc[0:10]
+
+
+#Z-score vs percentage
+
+plt.figure()
+plt.plot(comsform['commigpct'],comsform['comzscore'], 'bo')
+plt.xlabel('Within-Community Percentage')
+plt.ylabel('Normalized Within-Community Degree')
+plt.savefig('output/correlations/commigpct_wcdeg.pdf')
+plt.close()
+
 
 
 #Lists of participation and degree top
 comsform.sort('partcoef',ascending = False)[['shortname','com0deg','com1deg','com2deg','com3deg','com4deg','com5deg']].iloc[0:10]
+
+comsform.sort('intercompct',ascending = False)[['shortname','com0deg','com1deg','com2deg','com3deg','com4deg','com5deg']].iloc[0:10]
+
 
 
 
