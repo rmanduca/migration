@@ -49,7 +49,7 @@ totpopcom = coms.groupby('formalcom').agg(sum)
 top20 = m2m.groupby('source').agg(sum).sort('Exmpt_Num', ascending = False).iloc[0:20].index
 labels = ['Greater Texas','Upper Midwest','East-Central','West','East Coast','Mid-South']
 colorslist = ['red','blue','gray','yellow','green','purple']
-msalist = range(6) + [11]
+msalist = range(7) #Taking Atlanta back out+ [11]
 fig = plt.figure(figsize = [12.5,6])
 for i in range(7):
     ax = fig.add_subplot(2,4,i+1)

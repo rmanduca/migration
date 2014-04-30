@@ -74,8 +74,12 @@ wexmpt = mg.degree(weight = 'w_exmpt')
 comsform = dict2column(comsform, wexmpt, 'wexmpt')
 
 #Total degree
-deg = mg.degree(weight = 'exmptgross')
-comsform = dict2column(comsform, deg, 'wdeg')
+wdeg = mg.degree(weight = 'exmptgross')
+comsform = dict2column(comsform, wdeg, 'wdeg')
+
+#unweighted degree
+deg = mg.degree()
+comsform = dict2column(comsform, deg, 'deg')
 
 #Average outside com
 comsform['outcom'] = comsform['wexmpt'] / comsform['wdeg']
@@ -149,8 +153,8 @@ comsform['state'] = comsform['shortname'].apply(lambda x: re.search(', [A-Z][A-Z
 
 #Other regionalizations based on states
 othercoms = pd.io.parsers.read_csv('data/othercommunities.csv')
-comsform = pd.merge(comsform, othercoms[['Abbreviation','Court_dist','Census']], how = 'left',left_on = 'state', right_on = 'Abbreviation')
-
+comsform2 = pd.merge(comsform, othercoms[['Abbreviation','Court_dist','Census']], how = 'left',left_on = 'state', right_on = 'Abbreviation')
+comsform = comsform2
 #Export comsform data
 comsform.to_csv('output/community_statistics.csv')
 
@@ -247,16 +251,17 @@ plt.close()
 regchurn = comsform.groupby('Census')['churnrate'].agg('mean')
 regchurn.sort('churnrate',ascending = False)
 reg = list(regchurn.index)
-
+regnames = ['Mountain','Pacific','South Atlantic','WS Central','New England','EN Central','ES Central','Mid Atlantic','WN Central']
 boxes = []
 for i in range(len(reg)):
     boxes.append(comsform[comsform['Census'] == reg[i]]['churnrate'])
 
 plt.figure(figsize = (12,6))
 plt.boxplot(boxes,0,'')
-plt.xticks(range(10),['']+reg)
+plt.xticks(range(10),['']+regnames)
 plt.ylabel('Migration Churn Rate')
-plt.savefig('output/churnratesregions.pdf')
+plt.tick_params(axis='x', which='major', labelsize=9)
+plt.savefig('output/churnratescensusregions.pdf')
 plt.close()
 
 regions
@@ -331,15 +336,15 @@ comsform.sort('wdegpct', ascending = False)[['shortname','wdegpct','wexmpt','wde
 comsform.sort('poppct', ascending = False)[['shortname','poppct','wexmpt','wdeg']].iloc[0:10].sum()
 
 plt.figure()
+plt.plot(comsform.sort('poppct', ascending = False)['poppct'],'y', label = 'Population')
 plt.plot(comsform.sort('wdegpct', ascending = False)['wdegpct'], 'r', label = 'All Migrants')
 plt.plot(comsform.sort('outcompct', ascending = False)['outcompct'], label = 'Extra-Community Migrants')
-plt.plot(comsform.sort('poppct', ascending = False)['poppct'],'y', label = 'Population')
 plt.yscale('log')
 plt.xlabel('Metro Rank')
 plt.ylabel('Percentage of Total')
 #Migrants Flowing through Metro')
 plt.legend()
-plt.savefig('output/correlations/pctmig_outcom.jpeg')
+plt.savefig('output/correlations/pctmig_outcom.pdf')
 plt.close()
 #plt.xscale('log')
 
@@ -352,7 +357,7 @@ for com in range(6):
     print comsform[comsform['formalcom'] == com].sort('commigpct', ascending = False).iloc[0:5]['commigpct'].sum()
 plt.legend()
 plt.xlabel('MSA Rank')
-plt.ylabel('Percent of Total Within-Community Degree')
+plt.ylabel('Fraction of Total Within-Community Degree')
 plt.savefig('output/correlations/commigpct_rank.pdf')
 plt.close()
 #plt.xscale('log')
@@ -362,6 +367,8 @@ plt.figure()
 plt.plot(comsform['wincomdeg'],comsform['wexmpt'], 'bo')
 plt.yscale('log')
 plt.xscale('log')
+plt.xlabel('Within-Community Degree')
+plt.ylabel('Extra-Community Degree')
 plt.savefig('output/correlations/wincomdeg_wexmpt.pdf')
 pearsonr(comsform['wincomdeg'],comsform['wexmpt']) #0.81
 plt.close()
@@ -376,6 +383,13 @@ pearsonr(comsform['commigpct'],comsform['wexmpt']) #0.807
 
 
 #Intra-com pct vs Participation
+plt.figure()
+plt.scatter(comsform['partcoef'],comsform['commigpct'], c = comsform['formalcom'], s = 50)
+plt.xlabel('Participation Coefficient')
+plt.ylabel('Within-Community Percentage')
+plt.savefig('output/correlations/particip_commigpct_col.pdf')
+plt.close()
+
 plt.figure()
 plt.plot(comsform['partcoef'],comsform['commigpct'], 'bo')
 plt.xlabel('Participation Coefficient')
@@ -456,7 +470,43 @@ comsform.sort('partcoef',ascending = False)[['shortname','com0deg','com1deg','co
 
 comsform.sort('intercompct',ascending = False)[['shortname','com0deg','com1deg','com2deg','com3deg','com4deg','com5deg']].iloc[0:10]
 
-
-
-
 #22pct of all migrants in top 10, 37pct of all inter-com migrants
+
+
+
+#Table of extra-com degree
+excom = comsform.sort('wexmpt',ascending = False)[['shortname','pop','wexmpt','wdeg']]
+for var in ['pop','wexmpt','wdeg']:
+    excom[var] = excom[var].apply(lambda x: "{:,}".format(int(round(x))))
+excom.columns = ['MSA','Population','Extra-community Degree','Total Weighted Degree']
+
+latex = file('output/tables/excom.tex', 'w')
+latex.write(excom.iloc[0:10].to_latex(index = False).replace('llll','lrrr'))
+latex.close()
+
+
+#Table of partcoeff
+partcom = comsform.sort('partcoef',ascending = False)[['shortname','pop','partcoef','com0deg','com1deg','com2deg','com3deg','com4deg','com5deg']].iloc[0:10]
+for var in ['pop','com0deg','com1deg','com2deg','com3deg','com4deg','com5deg']:
+    partcom[var] = partcom[var].apply(lambda x: "{:,}".format(int(round(x))))
+partcom['partcoef'] = partcom['partcoef'].apply(lambda x: round(x,2))
+
+partcom.columns = ['MSA','Population','Participation Coef','Greater Texas','Upper Midwest','East Central','West','East Coast','Mid-South']
+
+latex = file('output/tables/partcom.tex', 'w')
+latex.write(partcom.iloc[0:10].to_latex(index = False).replace('llrllllll','llrrrrrrr'))
+latex.close()
+
+
+comsform.sort('partcoef', ascending = False)[['shortname','partcoef']].iloc[0:20]
+
+
+#Degree-degree correlation
+for i in mg.nodes():
+    totweight = 0
+    for j in mg[i].keys():
+        totweight += comsform.loc[str(j),'wdeg'] * mg[i][j]['exmptgross']
+    ndeg = 1.0*totweight / comsform.loc[str(i),'wdeg']
+    
+    i['neidegree'] = ndeg
+    comsform.loc[str(i),'neidegree'] = ndeg

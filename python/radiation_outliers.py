@@ -154,24 +154,23 @@ m2m.sort('resid',ascending = True)[['shortname_s','shortname_t','pred','e_0910',
 m2m.sort('pct',ascending = False)[['shortname_s','shortname_t','pred','e_0910','pop_s','pop_t','dist']].iloc[0:30].to_csv('output/radiation/neg_pct.csv')
 m2m.sort('pct',ascending = True)[['shortname_s','shortname_t','pred','e_0910','pop_s','pop_t','dist']].iloc[0:30].to_csv('output/radiation/pos_pct.csv')
 
-
 #Plot predicted vs actual
 plt.figure()
-plt.plot(m2m['e_0910'],m2m['pred'], 'bo')
+plt.plot(m2m['e_0910'],m2m['pred'], 'b.')
 plt.xlabel('Actual Value')
 plt.ylabel('Predicted Value')
 plt.savefig('output/radiation/rad_predvsactual.pdf')
 plt.close()
 
 plt.figure()
-plt.plot(m2m['e_0910'],m2m['pred'], 'bo')
+plt.plot(m2m['e_0910'],m2m['pred'], 'b.')
 plt.yscale('log')
 plt.xscale('log')
 plt.xlabel('Actual Value')
 plt.ylabel('Predicted Value')
 plt.savefig('output/radiation/rad_predvsactual_log.pdf')
 plt.close()
-pearsonr(m2m['e_0910'],m2m['pred'])
+pearsonr(m2m['e_0910'],m2m['pred']) #.67
 
 
 #Plot residuals vs pop product (?)
@@ -193,18 +192,20 @@ plt.savefig('output/radiation/rad_resid_popprod.pdf')
 plt.close()
 
 #Plot residuals vs pop source
-m2m['popsrcgroup'] = m2m['pplog'].apply(ceil)
+m2m[p
+10000,50000,1000000,500000,1mil 5mil
+m2m['popsrcgroup'] = pd.cut(m2m['pop_s'],[0,50000,100000,500000,1000000,5000000,1000000000])
 
 #Check out number of cases
-m2m[['ppgroup','e_0910']].groupby('ppgroup').agg(len)
+m2m[['popsrcgroup','e_0910']].groupby('popsrcgroup').agg(len)
 
 boxes = []
-for i in range(9,16):
-    boxes.append(m2m[m2m['ppgroup']==i]['resid'])
+for i in m2m['popsrcgroup'].unique():
+    boxes.append(m2m[m2m['popsrcgroup']==i]['resid'])
 
 plt.figure()
 plt.boxplot(boxes,0,'')
-plt.xticks(range(8),["",'10^9','10^10','10^11','10^12','10^13','10^14','10^15'])
+plt.xticks(range(8),["",'0-50k','50k-100k','100k-500k','500k-1mil','1mil-5mil','Over 5mil'])
 plt.savefig('output/radiation/rad_resid_popprod.pdf')
 plt.close()
 
@@ -220,12 +221,65 @@ for i in range(250,3250,250):
     boxes.append(m2m[m2m['dgroup']==i]['resid'])
 
 plt.figure()
-plt.boxplot(boxes,0,'')
+plt.boxplot(boxes,0,'b.')
+plt.ylim(-3000,3000)
 plt.xticks(range(13),range(0,3250,250))
 plt.xlabel('Distance Between Origin and Destination (km)')
 plt.ylabel('Radiation Model Residual')
 plt.savefig('output/radiation/rad_resid_dist.pdf')
 plt.close()
+
+#Big residuals by distance
+boxes = []
+for i in range(250,3250,250):
+    boxes.append(m2m[(m2m['dgroup']==i) & ((m2m['resid']>500)|(m2m['resid']<-500))]['resid'])
+
+plt.figure()
+plt.boxplot(boxes,0,'b.')
+plt.ylim(-7000,7000)
+plt.xticks(range(13),range(0,3250,250))
+plt.axhline(0, color = 'black')
+plt.xlabel('Distance Between Origin and Destination (km)')
+plt.ylabel('Radiation Model Residual')
+plt.savefig('output/radiation/rad_bigresid_dist.pdf')
+plt.close()
+
+#One figure with two subplots
+fig = plt.figure(figsize = (10,4.5))
+
+boxes = []
+for i in range(250,3250,250):
+    boxes.append(m2m[m2m['dgroup']==i]['resid'])
+
+ax = fig.add_subplot(1,2,1)
+ax.boxplot(boxes,0,'b.')
+ax.set_title('A: All Residuals by Distance')
+plt.ylim(-3000,3000)
+plt.xticks(range(13),range(0,3250,250))
+plt.xlabel('Distance Between Origin and Destination (km)')
+plt.ylabel('Radiation Model Residual')
+plt.axhline(0, color = 'black')
+plt.tick_params(axis='x', which='major', labelsize=6)
+
+ax = fig.add_subplot(1,2,2)
+
+boxes = []
+for i in range(250,3250,250):
+    boxes.append(m2m[(m2m['dgroup']==i) & ((m2m['resid']>500)|(m2m['resid']<-500))]['resid'])
+
+ax.boxplot(boxes,0,'b.')
+ax.set_title('B: Residuals >500 by Distance')
+plt.ylim(-7000,7000)
+plt.xticks(range(13),range(0,3250,250))
+plt.xlabel('Distance Between Origin and Destination (km)')
+plt.ylabel('Radiation Model Residual')
+plt.axhline(0, color = 'black')
+
+plt.tick_params(axis='x', which='major', labelsize=6)
+
+plt.savefig('output/radiation/rad_resid_dist_both.pdf')
+plt.close()
+
 
 
 #Residuals by source community
@@ -318,3 +372,95 @@ netplot('output/radiation/metro_effic.jpeg',width, height, mgdraw, pos, with_lab
     node_size = sqrt(inout.sort(['pop'])['pop']), 
     node_color = inout.sort(['pop'])['effic'],cmap = colormap,
     alpha = .7, linewidths = 0.5, width = 0)
+    
+    
+    
+#Latex Tables of residuals
+topposresid = m2m.sort('resid',ascending = False)[['shortname_s','shortname_t','pred','e_0910','resid','dist']].iloc[0:10]
+for var in ['pred','resid','e_0910','dist']:
+    topposresid[var] = topposresid[var].apply(lambda x: "{:,}".format(int(round(x))))
+topposresid.columns = ['Origin','Destination','Predicted','Actual','Residual','Distance (km)']
+latex = file('output/tables/topposresid.tex', 'w')
+latex.write(topposresid.iloc[0:10].to_latex(index = False))
+latex.close()
+
+topnegresid = m2m.sort('resid',ascending = True)[['shortname_s','shortname_t','pred','e_0910','resid','dist']].iloc[0:10]
+for var in ['pred','resid','e_0910','dist']:
+    topnegresid[var] = topnegresid[var].apply(lambda x: "{:,}".format(int(round(x))))
+topnegresid.columns = ['Origin','Destination','Predicted','Actual','Residual','Distance (km)']
+latex = file('output/tables/topnegresid.tex', 'w')
+latex.write(topnegresid.iloc[0:10].to_latex(index = False))
+latex.close()
+
+#Latex top flows
+topflows = m2m.sort('e_0910',ascending = False)[['shortname_s','shortname_t','e_0910','dist']].iloc[0:10]
+for var in ['e_0910','dist']:
+    topflows[var] = topflows[var].apply(lambda x: "{:,}".format(int(round(x))))
+topflows.columns = ['Origin','Destination','Migrants','Distance (km)']
+latex = file('output/tables/topflows.tex', 'w')
+latex.write(topflows.iloc[0:10].to_latex(index = False).replace('llll','llrr'))
+latex.close()
+
+#Distance vs Predicted and actual
+
+plt.figure()
+plt.plot(m2m['dist'],m2m['pred'], 'bo')
+plt.xscale('log')
+plt.yscale('log')
+
+#avg dist traveled
+m2m['wdist'] = m2m.apply(lambda x: x['dist']*x['e_0910'],axis = 1)
+
+avgdistt = m2m.groupby('shortname_t')[['wdist','e_0910']].agg(sum)
+avgdistt['avgdist'] = 1.0*avgdistt['wdist'] /avgdistt['e_0910']  
+avgdistt.sort('avgdist', ascending = False).iloc[0:20]
+
+avgdists = m2m.groupby('shortname_s')[['wdist','e_0910']].agg(sum)
+avgdists['avgdist'] = 1.0*avgdists['wdist'] /avgdists['e_0910']  
+avgdists.sort('avgdist', ascending = False).iloc[0:20]
+
+#some weird ones--watertown NY?   Forts!!!
+
+
+#Residuals by source and target metro
+avgress = m2m.groupby('shortname_s')['resid'].agg(mean)
+avgress.sort(ascending = False)
+avgress
+#Not much - maybe because the rad model divvies up the known quantity of source migrants, 
+
+avgrest = m2m.groupby('shortname_t')['resid'].agg(mean)
+avgrest.sort(ascending = False)
+avgrest
+#This one does look interesting - lots of big residuals among major cities
+
+#Predited and actual numbers of inflows
+practin = m2m.groupby('shortname_t')[['e_0910','pred']].agg(sum)
+practin['aggresid'] = practin['e_0910'] - practin['pred']
+practin.sort('aggresid', ascending = False).iloc[0:20]
+practin.sort('aggresid', ascending = True).iloc[0:20]
+practin['aggresid'].mean()
+practin['aggresid'].sum() #positive becasue of counties? And m2m flows taht were zero not being present?
+
+practin['MSA'] = practin.index
+
+cityresid = practin.sort('aggresid', ascending = False)[['MSA','e_0910','pred','aggresid']].iloc[0:10]
+for var in ['e_0910','pred','aggresid']:
+    cityresid[var] = cityresid[var].apply(lambda x: "{:,}".format(int(round(x))))
+cityresid.columns = ['MSA','Actual Flow','Predicted Flow','Residual']
+latex = file('output/tables/cityresid.tex', 'w')
+latex.write(cityresid.iloc[0:10].to_latex(index = False).replace('llll','lrrr'))
+latex.close()
+
+
+#What pct of resid are really big?
+m2m['aresid'] = m2m['resid'].apply(abs)
+m2m['aresid'].sum() #4739054
+m2m['e_0910'].sum() #Out[654]: 5280236.0
+m2m[m2m['aresid']>500]['aresid'].sum() #2603578 , 55%
+m2m[(m2m['aresid']>500) & (m2m['dist']>250)]['aresid'].sum() #867859 , 18%
+
+
+m2m[m2m['aresid']>500]['aresid'].shape #1693
+m2m.shape #44004 3.8 percent
+
+
