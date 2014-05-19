@@ -486,15 +486,16 @@ latex.close()
 
 
 #Table of partcoeff
-partcom = comsform.sort('partcoef',ascending = False)[['shortname','pop','partcoef','com0deg','com1deg','com2deg','com3deg','com4deg','com5deg']].iloc[0:10]
-for var in ['pop','com0deg','com1deg','com2deg','com3deg','com4deg','com5deg']:
+partcom = comsform.sort('partcoef',ascending = False)[['shortname','formalcom','pop','partcoef']] #,'com0deg','com1deg','com2deg','com3deg','com4deg','com5deg']].iloc[0:10]
+for var in ['pop']: #,'com0deg','com1deg','com2deg','com3deg','com4deg','com5deg']:
     partcom[var] = partcom[var].apply(lambda x: "{:,}".format(int(round(x))))
 partcom['partcoef'] = partcom['partcoef'].apply(lambda x: round(x,2))
-
-partcom.columns = ['MSA','Population','Participation Coef','Greater Texas','Upper Midwest','East Central','West','East Coast','Mid-South']
-
+comnames = ['Greater Texas','Upper Midwest','East Central','West','East Coast','Mid-South']
+partcom['Community'] = partcom.apply(lambda x: comnames[x['formalcom']], axis = 1)
+partcom.columns = ['MSA','comnum','Population','Participation Coef','Community'] #,'Greater Texas','Upper Midwest','East Central','West','East Coast','Mid-South']
+partcom = partcom[['MSA','Community','Population','Participation Coef']]
 latex = file('output/tables/partcom.tex', 'w')
-latex.write(partcom.iloc[0:10].to_latex(index = False).replace('llrllllll','llrrrrrrr'))
+latex.write(partcom[['MSA','Community','Population','Participation Coef']].iloc[0:10].to_latex(index = False).replace('lllr','llrr'))
 latex.close()
 
 

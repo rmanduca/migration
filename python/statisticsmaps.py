@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 import pyproj
 import mpl_toolkits.basemap as bm
 import re
+from scipy.stats.stats import pearsonr
+
 
 #New Modules
 sys.path.append('/Users/Eyota/projects/thesis/code/python/modules')
@@ -102,7 +104,7 @@ plt.xlabel('Population')
 plt.ylabel('Weighted Degree')
 plt.savefig('output/correlations/pop_wdegree_%s.pdf' %year)
 plt.close()
-
+pearsonr(stats['pop'],stats['wdegree'])
 plt.plot(stats['degree'],stats['wdegree'], 'bo')
 plt.xlabel('Unweighted Degree')
 plt.ylabel('Weighted Degree')
@@ -141,6 +143,7 @@ plt.xlabel('Population')
 plt.ylabel('Weighted Degree')
 plt.savefig('output/correlations/pop_wdegree_log_%s.pdf' %year)
 plt.close()
+pearsonr(stats['pop'],stats['wdegree']) #0.923
 
 plt.figure()
 plt.plot((stats['pop']),stats['flowcloseness'], 'bo')
@@ -148,6 +151,7 @@ plt.xlabel('Population')
 plt.ylabel('Closeness Centrality')
 plt.savefig('output/correlations/pop_flowclose_%s.pdf' %year)
 plt.close()
+pearsonr(stats['pop'],stats['flowcloseness']) #0.364
 
 plt.figure()
 plt.plot((stats['pop']),stats['flowcloseness'], 'bo')
@@ -164,6 +168,7 @@ plt.xlabel('Population')
 plt.ylabel('Betweenness Centrality')
 plt.savefig('output/correlations/pop_flowbtwn_%s.pdf' %year)
 plt.close()
+pearsonr(stats['pop'],stats['flowbtwnness']) #0.863
 
 plt.figure()
 plt.plot(stats['pop'],stats['flowbtwnness'], 'bo')
@@ -189,6 +194,8 @@ plt.xlabel('Closeness Centrality')
 plt.ylabel('Betweenness Centrality')
 plt.savefig('output/correlations/close_btwn_%s.pdf' %year)
 plt.close()
+pearsonr(stats['flowcloseness'],stats['flowbtwnness']) #0.455
+
 
 plt.figure()
 plt.plot(stats['flowcloseness'],stats['flowbtwnness'], 'bo')
