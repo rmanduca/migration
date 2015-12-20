@@ -25,7 +25,7 @@ latex = file('output/tables/top_10_metros_in.tex', 'w')
 latex.write(topmet.iloc[0:10].to_latex(index = False).replace('lllll','lrrrr')
 )
 latex.close()
-
+topmet.to_csv('output/tables/top_10_metros_in.csv')
 toppct = mettot.sort('pctchange', ascending = False)[['shortname','pop','e_in_0910','e_out_0910','netchange','pctchange']].iloc[0:20]
 toppct_big = mettot[mettot['pop'] > 100000].sort('pctchange', ascending = False)[['shortname','pop','e_in_0910','e_out_0910','netchange','pctchange']].iloc[0:20]
 
